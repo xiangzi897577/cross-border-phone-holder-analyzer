@@ -1,0 +1,81 @@
+:root {
+  --text: #42505d;
+  --text-h: #1f2d3a;
+  --bg:
+    radial-gradient(circle at top left, rgba(255, 194, 153, 0.55), transparent 24%),
+    radial-gradient(circle at right, rgba(58, 77, 96, 0.12), transparent 28%),
+    linear-gradient(180deg, #fff8f1 0%, #f6efe7 48%, #eee4d9 100%);
+  --border: rgba(49, 61, 74, 0.14);
+  --code-bg: #f5ebe0;
+  --accent: #b05c31;
+  --accent-bg: rgba(176, 92, 49, 0.12);
+  --accent-border: rgba(176, 92, 49, 0.35);
+  --shadow: rgba(24, 32, 41, 0.1) 0 20px 60px;
+
+  --sans: 'Segoe UI', 'Trebuchet MS', 'PingFang SC', sans-serif;
+  --heading: Georgia, 'Times New Roman', 'Songti SC', serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 18px/145% var(--sans);
+  letter-spacing: 0.18px;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @media (max-width: 960px) {
+    font-size: 16px;
+  }
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg);
+}
+
+#root {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  text-align: left;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+h1 {
+  font-size: clamp(2.8rem, 5vw, 4.7rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  margin: 0 0 18px;
+  @media (max-width: 960px) {
+    margin-bottom: 16px;
+  }
+}
+h2 {
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+  @media (max-width: 960px) {
+    font-size: 24px;
+  }
+}
+p {
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
