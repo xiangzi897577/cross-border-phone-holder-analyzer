@@ -76,3 +76,112 @@
 
 ### 明日任务
 - 实现 `GET /api/products` 接口。
+
+## Day 3 - 2026-05-11
+
+### 今日完成内容
+- 创建了 `server/routes` 目录。
+- 创建了 `server/routes/products.js`，把商品列表接口单独拆到路由文件中。
+- 实现了 `GET /api/products`，从 `server/data/products.json` 读取商品数据并返回完整数组。
+- 为商品数据读取增加了两类错误处理：
+  - 读取或解析文件失败时返回 `500`
+  - `products.json` 不是数组时返回 `500`
+- 在 `server/app.js` 中注册了 `/api/products` 路由，同时保留原有 `GET /api/health` 接口。
+
+### 修改了哪些文件
+- `server/app.js`
+- `server/routes/products.js`
+- `docs/DAILY_LOG.md`
+
+### 是否成功创建 GET /api/products 接口
+- 是，已经完成 `GET /api/products` 接口的代码实现。
+
+### 如何测试该接口
+- 进入 `server` 目录后运行 `node app.js`
+- 浏览器访问 `http://localhost:3000/api/products`
+- 或终端执行 `curl http://localhost:3000/api/products`
+- 正常情况下应返回 `products.json` 中的商品数组，返回格式为 JSON
+
+### 今日重点理解内容
+- `express.Router()` 的作用：把商品相关接口从 `app.js` 中拆出去，保持入口文件清晰。
+- `app.use('/api/products', productsRouter)` 的作用：把路由模块挂载到指定接口前缀。
+- `fs/promises` 中 `readFile` 的作用：异步读取本地 JSON 文件。
+products.js 是商品接口的“分店”；app.js 是后端总入口。
+
+浏览器访问 /api/products
+↓
+Express 接收到请求
+↓
+进入 routes/products.js
+↓
+读取 server/data/products.json
+↓
+把商品数组通过 res.json 返回
+↓
+浏览器看到 JSON 商品数据
+
+import { readFile } from 'fs/promises'
+这个是 Node 自带的文件读取工具。
+fs 是 file system，意思是文件系统。
+readFile 的作用是：
+读取本地文件内容server/data/products.json
+
+
+import { fileURLToPath } from 'url'
+const currentFilePath = fileURLToPath(import.meta.url)
+来自己算出当前文件路径。
+
+商品列表、商品详情、商品搜索、商品筛选，以后都可以慢慢放在 products.js 里面。
+- 为什么要先 `JSON.parse()` 再用 `Array.isArray()` 校验数据结构。
+- 为什么接口需要统一返回 JSON，并在出错时返回明确的状态码和错误信息。
+
+### 明日任务
+- 实现 `GET /api/products/:id` 商品详情接口。
+
+## Day 4 - 2026-05-12
+
+### 今日完成内容
+- 在 `server/routes/products.js` 中新增了 `GET /api/products/:id` 商品详情接口。
+- 继续使用 `server/data/products.json` 作为商品数据来源，没有修改商品数据结构。
+- 增加了 `id` 参数校验：当 `id` 不是合法数字时返回 `400`。
+- 增加了商品不存在处理：当找不到对应商品时返回 `404`。
+- 保持原有 `GET /api/products` 商品列表接口继续可用。
+
+### 修改了哪些文件
+- `server/routes/products.js`
+- `docs/DAILY_LOG.md`
+
+### 是否成功创建 GET /api/products/:id 接口
+- 是，已经成功创建 `GET /api/products/:id` 接口。
+
+### 如何测试该接口
+- 进入 `server` 目录后运行 `node app.js`
+- 浏览器访问 `http://localhost:3000/api/products/1`
+- 浏览器访问 `http://localhost:3000/api/products/2`
+- 浏览器访问 `http://localhost:3000/api/products/999`
+- 浏览器访问 `http://localhost:3000/api/products/abc`
+- 或在终端执行：
+  - `curl http://localhost:3000/api/products/1`
+  - `curl http://localhost:3000/api/products/2`
+  - `curl http://localhost:3000/api/products/999`
+  - `curl http://localhost:3000/api/products/abc`
+
+### 商品不存在时如何处理
+- 先用 `find()` 根据数字 `id` 查找商品。
+- 如果没有找到对应商品，就返回 `404` 状态码和错误信息 `Product not found.`。
+
+### id 不合法时如何处理
+- 先从 `req.params.id` 取出路由参数。
+- 再用 `Number()` 转成数字。
+- 如果结果不是合法整数，就返回 `400` 状态码和错误信息 `Product id must be a valid number.`。
+
+### 今日重点理解内容
+- `router.get('/:id')` 如何在路由模块中匹配动态路径参数。
+- `req.params.id` 是如何拿到 URL 中的 `id` 的。
+- 为什么 JSON 文件读取后要先 `JSON.parse()`，再用 `Array.isArray()` 校验数据结构。
+- 为什么商品 `id` 需要先转成数字，再和 `products.json` 中的数字类型 `id` 做严格比较。
+- `find()` 是如何从数组中查找第一个满足条件的商品对象的。
+- `400`、`404`、`500` 三种状态码在接口错误处理中的区别。
+
+### 明日任务
+- 实现商品利润计算工具函数。
