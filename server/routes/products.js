@@ -2,6 +2,7 @@ import express from 'express'
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { enrichProductMetrics } from '../utils/productMetrics.js'
 
 const router = express.Router()
 
@@ -29,7 +30,9 @@ async function readProducts() {
 router.get('/', async (req, res) => {
   try {
     const products = await readProducts()
-    return res.json(products)
+    const enrichedProducts = products.map((product) => enrichProductMetrics(product))
+
+    return res.json(enrichedProducts)
   } catch (error) {
     return res.status(500).json({
       status: 'error',
@@ -60,7 +63,7 @@ router.get('/:id', async (req, res) => {
       })
     }
 
-    return res.json(product)
+    return res.json(enrichProductMetrics(product))
   } catch (error) {
     return res.status(500).json({
       status: 'error',

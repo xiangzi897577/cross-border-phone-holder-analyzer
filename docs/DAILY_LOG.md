@@ -185,3 +185,194 @@ const currentFilePath = fileURLToPath(import.meta.url)
 
 ### 明日任务
 - 实现商品利润计算工具函数。
+
+## Day 5 - 2026-05-12
+
+### 今日完成内容
+- 创建了 `server/config/businessConfig.js`，把美元转人民币汇率和默认平台手续费率提取为业务配置。
+- 创建了 `server/utils/productMetrics.js`，集中封装商品利润、利润率、竞争等级和风险等级计算逻辑。
+- 在 `GET /api/products` 中为每个商品附加了计算字段。
+- 在 `GET /api/products/:id` 中为单个商品附加了计算字段。
+- 保持了原有 `400`、`404`、`500` 错误处理逻辑不变，没有提前实现 Dashboard、搜索、筛选、排序和 favorites。
+
+### 修改了哪些文件
+- `server/config/businessConfig.js`
+- `server/utils/productMetrics.js`
+- `server/routes/products.js`
+- `docs/DAILY_LOG.md`
+
+### 新增了哪些工具函数
+- `calculatePlatformFee(product)`：计算平台手续费。
+- `calculateProfit(product)`：计算单件利润。
+- `calculateProfitRate(product)`：计算利润率。
+- `getCompetitionLevel(product)`：根据竞争指数返回 `low / medium / high / unknown`。
+- `getRiskLevel(product)`：根据利润率、竞争、评分、评论数、物流成本和体积等级判断风险等级。
+- `enrichProductMetrics(product)`：返回带有计算字段的新商品对象。
+
+### 利润计算公式是什么
+- `revenueCNY = amazonPrice * BUSINESS_CONFIG.usdToCny`
+- `platformFee = amazonPrice * BUSINESS_CONFIG.usdToCny * platformFeeRate`
+- `totalCost = cost1688 + shippingCost + platformFee`
+- `profit = revenueCNY - totalCost`
+- `profitRate = profit / totalCost`
+- 当前固定汇率来自 `BUSINESS_CONFIG.usdToCny`，数值为 `6.8`，本次没有接入实时汇率接口。
+
+### 风险等级如何判断
+- 高风险 `high`：
+  - `profitRate < 0.15`
+  - 或 `competitionScore >= 80`
+  - 或 `rating < 4.2`
+  - 或 `shippingCost > cost1688`
+  - 或 `volumeLevel === 'large'`
+- 中风险 `medium`：
+  - `profitRate < 0.3`
+  - 或 `competitionScore >= 60`
+  - 或 `rating < 4.5`
+  - 或 `reviewCount < 100`
+- 低风险 `low`：
+  - 不满足以上高风险和中风险条件
+
+### 如何测试接口是否返回 profit、profitRate、riskLevel
+- 进入 `server` 目录后运行 `node app.js`。
+- 浏览器访问 `http://localhost:3000/api/products`，检查每个商品是否包含 `profit`、`profitRate`、`riskLevel`、`revenueCNY`、`platformFee`、`totalCost`、`profitRatePercent`、`competitionLevel`。
+- 浏览器访问 `http://localhost:3000/api/products/1`，检查单个商品是否也包含同样的计算字段。
+- 也可以在终端执行：
+  - `curl http://localhost:3000/api/products`
+  - `curl http://localhost:3000/api/products/1`
+
+### 今日重点理解内容
+- 为什么要把业务配置放到 `config` 目录，而不是直接在工具函数里硬编码汇率。
+- 为什么利润计算逻辑应该抽到 `utils`，避免把业务计算堆在路由文件里。
+- 为什么 `enrichProductMetrics` 要返回新对象，这样不会污染原始商品数据，后续做筛选、排序和统计时也更安全。
+- 为什么风险等级判断要先判断高风险，再判断中风险，避免判断顺序出错。
+- 为什么接口层只负责读取数据和返回结果，计算细节交给工具函数处理。
+
+### 明日任务
+- 实现 `GET /api/dashboard` 接口。
+## Day 6 - 2026-05-12
+
+### 今日完成内容
+- 新增 `server/routes/dashboard.js`，单独实现 `GET /api/dashboard` 接口。
+- Dashboard 数据继续来自 `server/data/products.json`，没有改动商品字段结构。
+- 先对每个商品执行 `enrichProductMetrics(product)`，再基于计算后的 `profitRate`、`profit`、`riskLevel` 等字段做统计。
+- 在 `server/app.js` 中注册了 `dashboardRouter`，保持 `app.js` 只负责引入和挂载路由。
+- 验证了 `GET /api/health`、`GET /api/products`、`GET /api/products/:id`、`GET /api/dashboard` 都可正常访问。
+
+### 修改了哪些文件
+- `server/app.js`
+- `server/routes/dashboard.js`
+- `docs/DAILY_LOG.md`
+
+### 新增了哪个接口
+- `GET /api/dashboard`
+
+### Dashboard 返回哪些统计字段
+- `totalProducts`
+- `averageProfitRate`
+- `averageProfitRatePercent`
+- `highPotentialCount`
+- `riskProductCount`
+- `topProfitProducts`
+- `categoryDistribution`
+- `averageCompetitionScore`
+- `lowCompetitionHighProfitCount`
+
+### 每个统计字段的计算逻辑
+- `totalProducts`：直接使用 `products.length`。
+- `averageProfitRate`：先 `map` enrich，再用 `reduce` 求所有商品 `profitRate` 总和，除以商品总数，空数组时返回 `0`，保留 4 位小数。
+- `averageProfitRatePercent`：用 `averageProfitRate * 100`，保留 1 位小数。
+- `highPotentialCount`：用 `filter` 统计同时满足 `profitRate >= 0.3`、`competitionScore < 70`、`rating >= 4.4` 的商品数量。
+- `riskProductCount`：用 `filter` 统计 `riskLevel === 'high'` 的商品数量。
+- `topProfitProducts`：先复制数组，再按 `profitRate` 从高到低 `sort`，然后 `slice(0, 5)`，最后 `map` 出 Dashboard 需要的核心字段。
+- `categoryDistribution`：先用 `reduce` 按 `category` 累加数量，再用 `Object.entries().map()` 转成 `{ category, count }` 数组。
+- `averageCompetitionScore`：用 `reduce` 求所有商品 `competitionScore` 总和，除以商品总数，空数组时返回 `0`，保留 1 位小数。
+- `lowCompetitionHighProfitCount`：用 `filter` 统计同时满足 `profitRate >= 0.3`、`competitionScore < 50` 的商品数量。
+
+### 如何测试 /api/dashboard
+- 进入 `server` 目录后运行 `node app.js`。
+- 浏览器访问 `http://localhost:3000/api/dashboard`。
+- 也可以在终端执行 `curl http://localhost:3000/api/dashboard`。
+- 同时回归测试：
+- `http://localhost:3000/api/health`
+- `http://localhost:3000/api/products`
+- `http://localhost:3000/api/products/1`
+
+### 今日重点理解内容
+- 为什么要把 Dashboard 统计逻辑放到独立的 `routes/dashboard.js`，而不是直接写在 `app.js`。
+- `app.use('/api/dashboard', dashboardRouter)` 的作用：给路由模块统一加上接口前缀。
+- 为什么 Dashboard 统计要基于 `enrichProductMetrics(product)` 之后的数据，而不是直接拿原始 JSON 字段硬算。
+- `map`、`filter`、`reduce`、`sort`、`slice` 在后端统计接口中的分工。
+- 为什么排序前要用 `[...]` 复制数组，避免直接修改原数组顺序。
+- 为什么空数组场景下要主动返回 `0` 和空数组，避免接口崩溃。
+
+### 明日任务
+- 第一周复盘与后端整理
+### CategoryDistribution 深入理解补充
+- `categoryDistribution` 之所以先用 `reduce` 统计成对象，再用 `Object.entries().map()` 转成数组，是因为“对象更适合计数，数组更适合前端展示和图表使用”。
+- `reduce` 阶段的目标不是直接得到最终展示结果，而是先得到一个中间统计对象，例如：
+- `{ '桌面手机支架': 2, '车载手机支架': 1 }`
+- 这个中间对象的 key 是类目名，value 是该类目的商品数量，所以很适合做累计统计。
+- `distributionMap[category] = (distributionMap[category] || 0) + 1` 的意思是：如果这个类目之前没有出现过，就从 `0` 开始计数；如果出现过，就在原来的数量上加 `1`。
+- 这里准确的理解是：`distributionMap` 才是对象，`category` 是变量，`distributionMap[category]` 表示“用 `category` 变量当前的值，当作对象的键名去取值或赋值”。
+- 例如 `const category = '桌面手机支架'` 时，`distributionMap[category] = 1` 实际效果等价于 `distributionMap['桌面手机支架'] = 1`。
+- 这不是“创建了一个叫 category 的对象名”，而是“把变量 `category` 里的字符串值，当成对象属性名”。
+- `distributionMap.category` 和 `distributionMap[category]` 不一样：
+- `distributionMap.category` 的键名固定就是 `category`
+- `distributionMap[category]` 的键名是变量 `category` 的值，比如 `桌面手机支架`、`车载手机支架`
+- 这个场景必须用 `distributionMap[category]`，因为类目名是动态变化的，不是固定写死的。
+- `Object.entries(distributionMap)` 会把统计对象转成二维数组，例如：
+- `[['桌面手机支架', 2], ['车载手机支架', 1]]`
+- 这里每一项都是 `[键, 值]`，也就是 `[category, count]`。
+- 后面的 `.map(([category, count]) => ({ category, count }))` 是把二维数组再转成对象数组，最终得到前端更容易使用的格式：
+- `[{ category: '桌面手机支架', count: 2 }, { category: '车载手机支架', count: 1 }]`
+- 这一整段的核心思路可以记成：
+- “先统计，再转换”
+- “先得到适合累计的对象，再得到适合展示的数组”
+
+## Day 7 - 2026-05-12
+
+### 今日完成内容
+- 检查并确认 `GET /api/health`、`GET /api/products`、`GET /api/products/:id`、`GET /api/dashboard` 四个接口继续可用
+- 复核 `server/app.js`，确认保留 `cors`、`express.json()`、`/api/health`，并继续只负责入口和路由注册
+- 复核 `server/routes/products.js`，确认列表接口和详情接口继续返回 Day 5 的计算字段
+- 复核 `server/routes/dashboard.js`，确认统计逻辑继续基于 `enrichProductMetrics(product)` 之后的数据
+- 将 `server/data/products.json` 从 12 条补足到 20 条手机支架商品数据
+- 更新 `README.md` 初版项目介绍
+- 更新 Day 7 开发记录，完成第一阶段后端收尾整理
+
+### 检查了哪些接口
+- `GET /api/health`
+- `GET /api/products`
+- `GET /api/products/:id`
+- `GET /api/dashboard`
+
+### 商品数据是否达到 20 条
+- 已达到，当前 `server/data/products.json` 共 20 条商品数据
+
+### 修改了哪些文件
+- `server/app.js`
+- `server/data/products.json`
+- `README.md`
+- `docs/DAILY_LOG.md`
+
+### README 更新了什么
+- 增加了项目背景、项目目标和当前技术栈
+- 增加了当前已完成的 4 个接口说明
+- 增加了本地运行方式与接口访问地址
+- 增加了第一阶段完成情况和下一阶段计划
+
+### 第一阶段后端完成情况
+- 后端入口和路由注册结构已整理完成
+- 商品 mock 数据已扩充到 20 条
+- 商品列表、商品详情、Dashboard 统计接口均可访问
+- 商品接口已包含利润、利润率、平台手续费、竞争等级、风险等级等计算字段
+- 第一阶段后端基础接口和数据准备工作已完成
+
+### 当前仍然存在的问题
+- 当前还没有 React 前端页面，接口尚未进入页面联调阶段
+- 搜索、筛选、排序和 favorites 候选池功能尚未开始
+- Dashboard 目前只有后端统计接口，还没有前端图表展示
+
+### 下一阶段任务
+- 进入 React 前端页面开发阶段
+- 优先从基础路由、页面结构和接口请求封装开始
