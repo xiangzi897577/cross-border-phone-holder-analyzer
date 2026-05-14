@@ -376,3 +376,213 @@ const currentFilePath = fileURLToPath(import.meta.url)
 ### 下一阶段任务
 - 进入 React 前端页面开发阶段
 - 优先从基础路由、页面结构和接口请求封装开始
+## Day 8 - 2026-05-13
+
+### 今日完成内容
+- 在 `client` 中安装了 `react-router-dom`
+- 在 `client/src/pages` 下创建了 5 个基础页面组件
+- 配置了前端基础路由和临时导航区域
+- 清理了 Vite 默认示例首页内容，替换为项目当前的 Day 8 页面结构
+- `ProductDetailPage` 已经可以通过 `useParams` 读取 URL 中的商品 `id`
+
+### 安装了什么依赖
+- `react-router-dom`
+
+### 创建了哪些页面组件
+- `DashboardPage.jsx`
+- `ProductsPage.jsx`
+- `ProductDetailPage.jsx`
+- `AnalysisPage.jsx`
+- `FavoritesPage.jsx`
+
+### 配置了哪些路由
+- `/` -> `DashboardPage`
+- `/products` -> `ProductsPage`
+- `/products/:id` -> `ProductDetailPage`
+- `/analysis` -> `AnalysisPage`
+- `/favorites` -> `FavoritesPage`
+
+### 如何测试页面切换
+- 进入 `client` 目录后运行 `npm run dev`
+- 在浏览器访问 `http://localhost:5173/`
+- 点击顶部导航，检查是否可以在“数据看板”“商品列表”“选品分析”“候选池”之间切换
+- 直接访问以下地址，检查页面是否能正常显示
+- `http://localhost:5173/`
+- `http://localhost:5173/products`
+- `http://localhost:5173/products/1`
+- `http://localhost:5173/analysis`
+- `http://localhost:5173/favorites`
+- 访问 `/products/1` 时，确认页面能显示当前商品 id 为 `1`
+
+### 今日重点理解内容
+- `react-router-dom` 是如何让 React 单页应用支持前端路由切换的
+- `BrowserRouter` 如何监听地址栏变化并提供路由上下文
+- `Routes` 和 `Route` 如何根据当前路径渲染对应页面
+- `NavLink` 如何用于页面跳转以及当前导航高亮
+- 动态路由 `/products/:id` 的含义
+- `useParams` 如何读取 URL 参数
+
+### 明日任务
+- 创建整体 Layout
+- 创建 Sidebar
+- 创建 Header
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 8 记录
+
+## Day 9 - 2026-05-13
+
+### 今日完成内容
+- 在 `client/src/components` 下新增了 `Layout.jsx`、`Sidebar.jsx`、`Header.jsx`
+- 把 Day 8 原本直接写在 `App.jsx` 里的头部和导航结构抽离到独立组件
+- 使用 `Layout` 包裹 `Routes`，让 `App.jsx` 只负责整体路由配置和页面挂载
+- 完成了后台管理系统风格的初步布局：左侧 Sidebar、右侧 Header、主内容区
+- 保持现有页面路由不变，没有请求后端接口，没有新增业务逻辑，没有修改 `server` 目录
+
+### 修改了哪些文件
+- `client/src/App.jsx`
+- `client/src/App.css`
+- `client/src/index.css`
+- `docs/DAILY_LOG.md`
+
+### 新增了哪些文件
+- `client/src/components/Layout.jsx`
+- `client/src/components/Sidebar.jsx`
+- `client/src/components/Header.jsx`
+
+### 路由测试结果
+- `/` 可以正常显示 Dashboard 页面
+- `/products` 可以正常显示商品列表占位页
+- `/products/1` 可以正常显示商品详情页，并通过 `useParams` 显示当前商品 id
+- `/analysis` 可以正常显示选品分析占位页
+- `/favorites` 可以正常显示候选池占位页
+- 构建检查通过后，说明当前前端代码没有明显语法报错
+
+### 今日重点理解知识点
+- 为什么要把布局组件从 `App.jsx` 中拆出去：让页面入口文件只负责路由，不负责具体布局细节
+- `Layout` 为什么要接收 `children`：这样同一套后台布局可以复用到不同路由页面
+- `NavLink` 和 `Link` 的区别：`NavLink` 更适合导航栏，因为它可以根据当前路径自动加上激活态样式
+- Sidebar、Header、Main Content 的职责划分：结构更清楚，后续继续扩展时更容易维护
+- 为什么这一天先做整体骨架，而不提前接接口或写业务组件：先把页面结构搭稳，后面接真实页面内容会更顺
+
+### 明天计划
+- 进入 Day 10，开始封装前端请求函数，并在 `ProductsPage` 中请求商品列表接口
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 9 记录
+
+## Day 10 - 2026-05-13
+
+### 今日完成内容
+- 创建了 `client/src/services/api.js`。
+- 在 `api.js` 中封装了 `getProducts`，统一请求 `http://localhost:3000/api/products`。
+- 在 `ProductsPage` 中使用 `useEffect` 在页面加载时请求商品列表接口。
+- 实现了 `products`、`loading`、`error` 三个基础状态。
+- 按 Day 10 范围临时渲染了商品名称、Amazon 价格、1688 成本、利润和利润率。
+- 保持今天只做商品列表接口联调，没有提前实现搜索、筛选、排序、收藏、图表和复杂卡片。
+
+### 修改了哪些文件
+- `client/src/pages/ProductsPage.jsx`
+- `docs/DAILY_LOG.md`
+
+### 新增了哪些文件
+- `client/src/services/api.js`
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:5173/products`
+
+### 如何测试
+- 先启动后端，浏览器访问 `http://localhost:3000/api/products`，确认能返回商品数组 JSON。
+- 再启动前端，访问 `http://localhost:5173/products`。
+- 页面首次进入时应先显示“商品列表加载中...”。
+- 请求成功后应显示商品名称、Amazon 价格、1688 成本、利润、利润率。
+- 如果临时关闭后端服务并刷新 `/products`，页面应显示错误提示。
+- 如果把后端接口临时改成返回空数组，页面应显示“暂无商品数据。”。
+- 可以打开浏览器开发者工具 `Network` 面板，确认前端实际请求了 `http://localhost:3000/api/products`，而不是读取前端本地 mock 数据。
+
+### 本次验证结果
+- `client` 执行 `npm run build` 已通过，说明前端代码没有明显语法和打包错误。
+- 使用 `curl.exe http://localhost:3000/api/products` 验证后端接口成功返回商品数组。
+- 当前后端接口返回了 20 条商品数据，并包含 `productName`、`profit`、`profitRatePercent` 等前端正在使用的字段。
+
+### 遇到的问题
+- 联调前先检查了跨域配置，确认 `server/app.js` 已经启用 `cors()`，所以今天不需要额外修改后端。
+- 后端 `GET /api/products` 返回的是商品数组本身，不是 `{ data: [] }` 结构，所以前端直接保存 `response.json()` 的结果即可。
+
+### 今日重点理解知识点
+- 为什么要把接口请求函数单独放到 `services` 目录，而不是直接写在页面组件里。
+- `useEffect(() => { ... }, [])` 为什么适合处理“页面首次加载后请求数据”。
+- `loading`、`error`、`products` 三个状态如何配合完成异步请求页面。
+- 为什么要根据 `response.ok` 手动判断请求是否成功。
+- 为什么即使后端已经有计算字段，前端渲染时也要做好默认值兜底，避免页面崩溃。
+
+### 明天计划
+- 进入 Day 11，开始把商品列表从临时文本渲染升级为基础商品展示组件。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 10 记录
+
+## Day 11 - 2026-05-14
+
+### 今日完成内容
+- 新增 `ProductCard` 组件，负责展示单个商品的图片、名称、类型、Amazon 售价、1688 成本、利润率、竞争指数和评分。
+- 新增 `ProductGrid` 组件，负责用网格布局遍历并渲染多个商品卡片。
+- 把 `ProductsPage` 成功请求后的展示方式从临时文本列表升级为卡片网格展示。
+- 商品卡片在 `product.id` 存在时支持点击跳转到 `/products/:id`。
+- 为商品卡片补充了图片兜底、字段兜底和 hover 样式，避免字段缺失或图片加载失败时页面出错。
+
+### 修改了哪些文件
+- `client/src/pages/ProductsPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 新增了哪些文件
+- `client/src/components/ProductCard.jsx`
+- `client/src/components/ProductGrid.jsx`
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:5173/products`
+
+### 如何测试
+- 先启动后端，访问 `http://localhost:3000/api/products`，确认商品数组仍然来自 Node 后端接口。
+- 再启动前端，访问 `http://localhost:5173/products`，确认商品列表已经从文本列表变成卡片网格。
+- 检查每张卡片是否展示了商品图片、名称、类型、Amazon 售价、1688 成本、利润率、竞争指数和评分。
+- 点击任意一张带 `id` 的商品卡片，确认地址会跳转到 `/products/:id`。
+- 直接访问 `http://localhost:5173/products/1`，确认 `ProductDetailPage` 仍然可以显示当前商品 id。
+- 如果某张图片路径失效，确认卡片会显示“暂无图片”，而不是让页面报错。
+
+### 本次验证结果
+- `ProductsPage` 仍然保留了 Day 10 的 `useEffect` 请求、`loading`、`error` 和空状态逻辑。
+- 商品列表展示职责已经拆分为 `ProductsPage -> ProductGrid -> ProductCard` 三层，更符合组件分工。
+- 商品详情跳转继续使用 `react-router-dom` 的 `Link`，不会刷新浏览器页面。
+
+### 遇到的问题
+- 当前商品数据里的图片路径是 `/images/phone-holder-x.jpg`，但前端静态目录里暂时没有对应图片文件，所以本次先在卡片里补了图片加载失败兜底。
+- 任务要求今天不改后端、不接详情接口，所以详情页仍然保持 Day 8 的占位实现，只验证路由跳转。
+
+### 今日重点理解知识点
+- 为什么要把“页面请求数据”和“单个商品展示”拆到不同组件里。
+- `ProductsPage`、`ProductGrid`、`ProductCard` 三层职责分别是什么。
+- 为什么卡片跳转要用 `Link`，而不是普通 `a` 标签。
+- 为什么组件渲染接口数据时要做字段兜底和图片兜底。
+- CSS Grid 如何快速把多个商品卡片排成响应式网格。
+
+### 明天计划
+- 进入 Day 12，开始让 `ProductDetailPage` 根据路由参数请求单个商品详情接口。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 11 记录
