@@ -13,7 +13,9 @@ function Sidebar() {
       <div className="sidebar__brand">
         <p className="sidebar__eyebrow">Cross-border Commerce</p>
         <h1 className="sidebar__title">手机支架选品分析</h1>
-        <p className="sidebar__description">Day 9 先完成后台系统整体布局骨架。</p>
+        <p className="sidebar__description">
+          当前先把 Dashboard、商品列表和商品详情这条第二周主流程稳定下来。
+        </p>
       </div>
 
       <nav className="sidebar__nav" aria-label="侧边导航">

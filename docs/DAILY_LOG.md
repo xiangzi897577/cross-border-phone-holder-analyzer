@@ -586,3 +586,183 @@ const currentFilePath = fileURLToPath(import.meta.url)
 
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 11 记录
+
+## Day 12 - 2026-05-14
+
+### 今日完成内容
+- 在 `client/src/services/api.js` 中新增了 `getProductById(id)`，专门请求 `GET /api/products/:id`
+- 在 `ProductDetailPage` 中使用 `useParams()` 获取 URL 中的商品 `id`
+- 在 `ProductDetailPage` 中使用 `useEffect` 请求商品详情接口
+- 实现了 `loading`、`error`、`product` 三个基础状态，并补充了图片加载失败占位
+- 页面已展示商品基础信息、价格、成本、利润、风险等级、风险因素和推荐理由
+- 页面保留了 `Link to="/products"` 的返回商品列表入口
+- 本次没有新增后端接口，没有修改 `server` 目录，没有提前实现搜索、筛选、排序、收藏和图表功能
+
+### 修改了哪些文件
+- `client/src/services/api.js`
+- `client/src/pages/ProductDetailPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 新增了哪些代码
+- `getProductById(id)`：请求单个商品详情接口，并处理 `400`、`404` 和通用错误
+- `ProductDetailPage` 的详情请求逻辑：根据路由参数 `id` 获取后端商品详情
+- 详情页信息块样式：让基础信息、价格利润、市场风险和推荐说明更清晰
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:5173/products`
+  - 点击商品卡片进入 `http://localhost:5173/products/1`
+
+### 如何测试
+- 先启动后端，访问 `http://localhost:3000/api/products/1`，确认可以返回单个商品详情 JSON
+- 再启动前端，访问 `http://localhost:5173/products`，点击任意商品卡片进入详情页
+- 正常商品测试：
+  - 访问 `http://localhost:5173/products/1`
+  - 页面应先显示“商品详情加载中...”
+  - 请求成功后应显示商品名称、分类、图片、供应商、材质、价格、利润、风险和推荐理由
+- 不存在商品测试：
+  - 访问 `http://localhost:5173/products/999`
+  - 页面应显示 `请求失败：商品不存在`
+- 非法 id 测试：
+  - 访问 `http://localhost:5173/products/abc`
+  - 页面应显示 `请求失败：商品 id 不合法`
+- 回归测试：
+  - 访问 `http://localhost:5173/products`
+  - 确认 Day 11 的商品卡片列表和点击跳转仍然正常
+
+### 今日重点理解知识点
+- 为什么详情页要通过 `useParams()` 读取 URL 中的 `id`
+- 为什么 `useEffect` 的依赖数组要写 `[id]`，这样当 `/products/1` 切到 `/products/2` 时会重新请求
+- `loading`、`error`、`product` 三个状态如何配合完成异步请求页面
+- 为什么把请求 `fetch` 逻辑封装在 `services/api.js`，而不是直接写在页面 JSX 里
+- 为什么前端要根据 `response.status` 区分 `400`、`404` 和其他错误，给用户更明确的提示
+- 为什么详情页渲染接口数据时要做默认值兜底，避免字段缺失导致页面报错
+
+### 明天计划
+- 进入 Day 13，开始封装 `getDashboard`
+- 创建 Dashboard 指标卡片组件
+- 请求 `/api/dashboard` 并展示核心统计数据
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 12 记录
+
+## Day 13 - 2026-05-15
+
+### 今日完成内容
+- 在 `client/src/services/api.js` 中新增了 `getDashboard()`，统一请求 `GET /api/dashboard`。
+- 新增 `client/src/components/StatCard.jsx`，负责展示单个 Dashboard 指标卡。
+- 在 `DashboardPage` 中使用 `useEffect` 请求 Dashboard 数据，并实现了 `dashboard`、`loading`、`error` 三个基础状态。
+- 首页已展示 4 个核心指标：总商品数、平均利润率、高潜力商品数、风险商品数。
+- 在 `client/src/App.css` 中补充了 Dashboard 指标卡样式，让首页开始具备数据看板感觉。
+- 保持了 Day 10 的商品列表接口联调和 Day 12 的商品详情接口联调逻辑不变，没有修改 `server` 目录。
+
+### 修改了哪些文件
+- `client/src/services/api.js`
+- `client/src/pages/DashboardPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 新增了哪些文件
+- `client/src/components/StatCard.jsx`
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:5173/`
+
+### 如何测试
+- 先启动后端，访问 `http://localhost:3000/api/dashboard`，确认可以返回 Dashboard JSON 数据。
+- 再启动前端，访问 `http://localhost:5173/`，确认页面会先显示“Dashboard 数据加载中...”。
+- 请求成功后，页面应显示总商品数、平均利润率、高潜力商品数、风险商品数 4 张指标卡。
+- 回归测试商品列表：
+  - 访问 `http://localhost:5173/products`
+  - 确认 Day 10 和 Day 11 的商品列表请求与卡片展示仍然正常
+- 回归测试商品详情：
+  - 访问 `http://localhost:5173/products/1`
+  - 确认 Day 12 的商品详情请求和页面展示仍然正常
+- 错误状态测试：
+  - 关闭后端服务后刷新 `http://localhost:5173/`
+  - 页面应显示 `请求失败：获取 Dashboard 数据失败` 或浏览器返回的网络错误提示，而不是页面崩溃
+
+### 本次验证结果
+- `server` 端通过 `node app.js` + `curl.exe http://localhost:3000/api/dashboard` 确认 Dashboard 接口可正常返回 JSON。
+- `client` 端执行 `npm run build` 通过，说明 Day 13 的前端改动没有引入明显语法或打包错误。
+
+### 遇到的问题
+- 后端返回的平均利润率字段同时包含 `averageProfitRate` 和 `averageProfitRatePercent`，前端优先展示百分比字段，同时保留了对原始小数字段的兜底处理，避免字段变化时页面直接报错。
+- 当前环境里无法像浏览器那样直接肉眼检查首页视觉效果，所以本次主要通过接口返回、构建结果和代码逻辑做验证。
+
+### 今日重点理解知识点
+- 为什么要把 `getDashboard()` 放到 `services/api.js`，而不是把 `fetch` 直接写在页面 JSX 里。
+- `DashboardPage` 中 `dashboard`、`loading`、`error` 三个状态分别负责什么。
+- `useEffect(() => { ... }, [])` 为什么适合处理“首页首次进入时请求一次 Dashboard 数据”。
+- 为什么要对后端返回字段做默认值兜底，比如数量默认显示 `0`、百分比默认显示 `0.0%`。
+- 为什么要把单个指标卡拆成 `StatCard` 组件，而不是把 4 张卡的结构全堆在页面里。
+
+### 明天计划
+- 进入 Day 14，检查 Dashboard、商品列表、商品详情这三条前端主流程是否稳定。
+- 继续做第二周复盘，修复联调和样式细节问题。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 13 记录
+
+## Day 14 - 5月24日：第二周复盘
+
+### 今日完成
+- 检查了 `App.jsx` 中的前端主路由配置，确认 `/`、`/products`、`/products/:id`、`/analysis`、`/favorites` 五条主路由继续存在。
+- 复查了 `Sidebar` 导航配置，确认继续使用 `NavLink` 实现当前导航项高亮，`/` 路由保留 `end` 处理，避免首页高亮串到其他路由。
+- 复查了 `ProductsPage`、`ProductGrid`、`ProductCard`，确认商品列表继续请求 Node 后端 `GET /api/products`，不是前端 mock 数据。
+- 复查了 `ProductDetailPage`，确认继续使用 `useParams()` 获取 `id`，并请求 `GET /api/products/:id`。
+- 复查了 `DashboardPage` 和 `StatCard`，确认首页继续请求 `GET /api/dashboard` 并展示 4 个核心指标。
+- 整理了 `client/src/services/api.js`，保留 `fetch` 方案，补了统一响应解析、基础 JSON 校验和更明确的后端连接失败提示。
+- 为列表页、详情页、Dashboard 页补了 `AbortController` 清理逻辑，减少切页或卸载时的异步状态污染。
+- 修复了 `ProductDetailPage` 的 `react-hooks/set-state-in-effect` lint 报错。
+- 小范围整理了第二周页面文案和样式，补了 loading / error / empty 三种提示样式，修正了 Sidebar、Header 和占位页里残留的阶段性文案。
+
+### 测试结果
+- `npm run lint` 通过。
+- `npm run build` 通过。
+- `http://localhost:3000/api/health` 正常。
+- `http://localhost:3000/api/products` 正常。
+- `http://localhost:3000/api/products/1` 正常。
+- `http://localhost:3000/api/products/999` 返回 `404`，错误状态符合预期。
+- `http://localhost:3000/api/products/abc` 返回 `400`，错误状态符合预期。
+- `http://localhost:3000/api/dashboard` 正常。
+- `http://localhost:5173/` 正常返回前端页面。
+- `http://localhost:5173/products` 正常返回前端页面。
+- `http://localhost:5173/products/1` 正常返回前端页面。
+- `http://localhost:5173/products/999` 正常返回前端页面，前端代码会展示错误状态。
+- `http://localhost:5173/products/abc` 正常返回前端页面，前端代码会展示错误状态。
+- `http://localhost:5173/analysis` 正常返回前端页面。
+- `http://localhost:5173/favorites` 正常返回前端页面。
+
+### 遇到的问题
+- `ProductDetailPage` 原本在 `useEffect` 中同步调用 `setState`，触发了 ESLint 的 `react-hooks/set-state-in-effect` 报错，本次已改成更稳定的请求清理写法。
+- 前端请求层原本对网络异常没有统一中文提示，后端未启动时更容易直接看到浏览器原始报错，本次已改为统一提示检查 `http://localhost:3000`。
+- 页面里还残留了 Day 9 和早期占位阶段的说明文案，本次一并整理，避免第二周收尾版本看起来像未清理的过程稿。
+- 当前环境只能确认前端地址可访问、构建通过和代码逻辑正确，`Sidebar` 激活态与商品卡片点击跳转主要通过代码实现和本地地址回归确认，没有做浏览器可视化录屏级别验证。
+
+### 当前主流程结论
+- Dashboard、商品列表、商品详情三条主流程当前都继续从 Node 后端取数。
+- 非法商品 id 和不存在商品 id 已有明确错误状态，不会直接出现明显的 `undefined`、`null` 或 `NaN`。
+- 第二周前后端主流程已经可以稳定跑通，适合作为第三周继续做搜索、筛选、排序前的基线版本。
+
+### 当前仍待优化点
+- 当前商品图片仍然主要依赖兜底占位，后续如果补充真实静态图片资源，商品卡片和详情页会更完整。
+- `AnalysisPage` 和 `FavoritesPage` 目前仍是占位结构，符合当前开发计划，但第三周后续仍需要按排期继续实现真实业务内容。
+- 目前只做了小范围布局稳定性调整，还没有进入更系统的 UI 统一和展示优化阶段。
+
+### 明天计划
+- 进入第三周功能增强阶段，后续再做搜索、筛选、排序、候选池、图表等功能。
