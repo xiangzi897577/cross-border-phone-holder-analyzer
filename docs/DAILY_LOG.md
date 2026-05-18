@@ -718,7 +718,7 @@ const currentFilePath = fileURLToPath(import.meta.url)
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 13 记录
 
-## Day 14 - 5月24日：第二周复盘
+## Day 14 - 2026-05-15：第二周复盘
 
 ### 今日完成
 - 检查了 `App.jsx` 中的前端主路由配置，确认 `/`、`/products`、`/products/:id`、`/analysis`、`/favorites` 五条主路由继续存在。
@@ -766,3 +766,239 @@ const currentFilePath = fileURLToPath(import.meta.url)
 
 ### 明天计划
 - 进入第三周功能增强阶段，后续再做搜索、筛选、排序、候选池、图表等功能。
+
+## Day 15 - 2026-05-15：搜索功能
+
+### 今日完成内容
+- 在 `server/routes/products.js` 中为 `GET /api/products` 增加了 `keyword` 查询参数支持。
+- 后端搜索范围已覆盖 `productName`、`category` 和 `tags`，并统一做了 `trim()` 和不区分大小写处理。
+- 保持了原有 `readProducts()`、`500` 错误处理和 `enrichProductMetrics(product)` 增强逻辑不变，确保搜索结果仍然包含 `profit`、`profitRate`、`riskLevel`、`competitionLevel` 等字段。
+- 新增了 `client/src/components/SearchInput.jsx`，支持输入关键词、点击搜索、按 Enter 搜索和清空关键词。
+- 在 `client/src/services/api.js` 中让 `getProducts(keyword, options)` 支持可选关键词参数，并使用 `URLSearchParams` 拼接查询字符串。
+- 在 `client/src/pages/ProductsPage.jsx` 中接入了搜索状态和搜索请求，让页面首次加载全部商品，搜索后请求后端接口，清空后重新请求全部商品。
+- 在 `client/src/App.css` 中补充了搜索输入框、按钮和信息提示样式，保持和当前后台系统风格一致。
+
+### 修改了哪些文件
+- `server/routes/products.js`
+- `client/src/components/SearchInput.jsx`
+- `client/src/services/api.js`
+- `client/src/pages/ProductsPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:3000/api/products`
+  - `http://localhost:3000/api/products?keyword=车载`
+  - `http://localhost:3000/api/products?keyword=磁吸`
+  - `http://localhost:3000/api/products?keyword=折叠`
+  - `http://localhost:3000/api/products?keyword=直播`
+  - `http://localhost:5173/products`
+
+### 如何测试
+- 后端接口测试：
+  - 访问 `http://localhost:3000/api/products`，确认返回全部商品数组。
+  - 访问 `http://localhost:3000/api/products?keyword=车载`，确认只返回和车载相关的商品。
+  - 访问 `http://localhost:3000/api/products?keyword=磁吸`，确认能匹配商品名、分类或标签中包含“磁吸”的商品。
+  - 访问 `http://localhost:3000/api/products?keyword=折叠`，确认能匹配商品名和标签里的“折叠”。
+  - 访问 `http://localhost:3000/api/products?keyword=直播`，确认能返回直播相关商品。
+  - 访问 `http://localhost:3000/api/products?keyword=不存在的关键词`，确认返回 `[]`，而不是报错。
+  - 随机检查搜索结果里的商品对象，确认仍然包含 `profit`、`profitRate`、`riskLevel`、`competitionLevel` 等增强字段。
+- 前端页面测试：
+  - 打开 `http://localhost:5173/products`，确认首次进入会加载全部商品。
+  - 在输入框中输入“车载”“磁吸”“折叠”“直播”，点击“搜索”或按 Enter，确认页面会刷新为对应搜索结果。
+  - 输入不存在的关键词，确认页面显示空状态提示。
+  - 点击“清空”，确认输入框被清空，并恢复全部商品列表。
+  - 关闭后端后刷新页面，确认原有错误状态仍然存在。
+
+### 遇到的问题和解决方式
+- 问题 1：后端搜索后如果直接返回过滤前的数据，就会丢失 Day 5 增强的利润、风险、竞争等级字段。
+- 解决方式：先按 `keyword` 过滤原始商品数组，再对过滤后的结果执行 `enrichProductMetrics(product)`。
+- 问题 2：中文关键词和特殊字符如果直接手写到 URL 字符串里，后续维护时容易出错。
+- 解决方式：前端在 `getProducts` 中统一使用 `URLSearchParams` 拼接查询参数。
+- 问题 3：如果用户重复搜索同一个关键词，只靠 `searchedKeyword` 一个状态值，不一定会重新触发请求。
+- 解决方式：在 `ProductsPage` 中增加请求触发计数，让“再次搜索同一个词”和“清空恢复全部”都能重新发请求。
+
+### 今日重点理解知识点
+- `req.query.keyword` 如何读取 URL 查询参数。
+- 为什么搜索前要先做 `String()`、`trim()` 和 `toLowerCase()`。
+- 为什么 `tags` 是数组时要用 `some()` 遍历每个标签做包含判断。
+- 为什么前端不做本地假搜索，而是把关键词传给后端接口，让接口返回真正过滤后的结果。
+- `ProductsPage -> getProducts(keyword) -> /api/products?keyword=xxx -> productsRouter -> setProducts` 这条数据流是怎样串起来的。
+- 为什么要把搜索输入框封装成可复用组件，而不是把输入框和按钮直接堆在页面里。
+
+### 明日计划
+- 进入 Day 16，开始实现类目筛选功能。
+- 继续保持前后端联动方式，由前端携带查询参数、后端负责真实过滤。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 15 记录
+
+## Day 16 - 2026-05-17：类目筛选
+
+### 今日完成内容
+- 在 `server/routes/products.js` 中为 `GET /api/products` 增加了 `category` 查询参数支持。
+- 后端现在支持 `keyword` 和 `category` 组合查询：先按关键词匹配 `productName`、`category`、`tags`，再按 `category.trim()` 做精确匹配。
+- 保持了 `enrichProductMetrics(product)` 增强逻辑，筛选结果仍然包含 `profit`、`profitRate`、`riskLevel`、`competitionLevel` 等字段。
+- 新增 `client/src/components/CategoryFilter.jsx`，只负责类目下拉框 UI，不直接请求接口。
+- 在 `client/src/services/api.js` 中把 `getProducts` 改为支持 `filters` 对象，并用 `URLSearchParams` 拼接 `keyword` 和 `category`。
+- 在 `ProductsPage` 中接入类目状态、组合查询、切换类目自动刷新和“重置筛选”按钮。
+- 小范围整理了商品列表工具栏样式，让搜索框、类目筛选和重置按钮在同一行展示。
+- 将 `products.json` 中用于筛选的类目统一到 Day 16 的六个类目：桌面支架、车载支架、折叠支架、磁吸支架、懒人支架、直播支架。
+
+### 修改了哪些文件
+- `server/routes/products.js`
+- `server/data/products.json`
+- `client/src/components/CategoryFilter.jsx`
+- `client/src/services/api.js`
+- `client/src/pages/ProductsPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:3000/api/products`
+  - `http://localhost:3000/api/products?category=车载支架`
+  - `http://localhost:3000/api/products?keyword=磁吸&category=磁吸支架`
+  - `http://localhost:5173/products`
+
+### 如何测试
+- 后端接口测试：
+  - `http://localhost:3000/api/products`
+  - `http://localhost:3000/api/products?category=车载支架`
+  - `http://localhost:3000/api/products?category=磁吸支架`
+  - `http://localhost:3000/api/products?keyword=车载&category=车载支架`
+  - `http://localhost:3000/api/products?keyword=直播&category=直播支架`
+  - `http://localhost:3000/api/products?keyword=不存在的关键词&category=车载支架`
+- 前端页面测试：
+  - 打开 `http://localhost:5173/products`，确认首次显示全部商品。
+  - 依次选择六个类目，确认商品列表会刷新。
+  - 输入关键词后点击“搜索”，确认会结合当前类目一起筛选。
+  - 输入不存在的关键词并选择类目，确认显示空状态：没有找到符合条件的商品，请尝试更换关键词或类目。
+  - 点击“重置筛选”，确认 keyword 和 category 都被清空，并恢复全部商品。
+
+### 本次验证结果
+- `client` 执行 `npm run lint` 通过。
+- `client` 执行 `npm run build` 通过。
+- 使用临时 3100 端口挂载 `productsRouter` 验证后端筛选逻辑：
+  - 全部商品返回 20 条。
+  - `category=车载支架` 返回 4 条。
+  - `category=磁吸支架` 返回 3 条。
+  - `keyword=车载&category=车载支架` 返回 4 条。
+  - `keyword=直播&category=直播支架` 返回 4 条。
+  - `keyword=不存在的关键词&category=车载支架` 返回 0 条。
+- 随机检查筛选结果，确认仍然包含利润、利润率、风险等级、竞争等级等增强字段。
+
+### 遇到的问题和解决方式
+- 问题 1：现有商品数据里很多类目是“车载手机支架”“磁吸手机支架”，但 Day 16 验收使用“车载支架”“磁吸支架”。
+- 解决方式：把商品数据中的筛选类目统一成今天要求的六个类目，保证后端可以按 `category.trim()` 做精确匹配。
+- 问题 2：本地 3000 端口已有旧后端进程占用，直接请求会命中旧服务。
+- 解决方式：没有强行关闭用户进程，而是临时在 3100 端口挂载同一个路由完成隔离验证。
+
+### 今日重点理解知识点
+- `req.query.category` 如何读取类目查询参数。
+- 为什么 `category` 适合精确匹配，而 `keyword` 适合模糊匹配。
+- 为什么组合筛选可以理解成“先筛一遍 keyword，再筛一遍 category”。
+- 为什么 `getProducts({ keyword, category })` 要用 `URLSearchParams` 拼接参数，避免中文和特殊字符出错。
+- `ProductsPage -> getProducts({ keyword, category }) -> /api/products?keyword=xxx&category=xxx -> productsRouter -> ProductGrid` 这条前后端数据流。
+
+### 明日计划
+- 进入 Day 17，开始实现利润率区间筛选。
+- 继续保持后端负责真实筛选，前端负责收集筛选条件和展示状态。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 16 记录
+
+## Day 17 - 2026-05-18：利润率筛选
+
+### 今日完成内容
+- 在 `server/routes/products.js` 中为 `GET /api/products` 增加了 `minProfitRate` 查询参数支持。
+- 后端现在支持 `keyword`、`category`、`minProfitRate` 三个条件组合筛选。
+- 利润率筛选基于后端增强后的 `profitRatePercent` 字段完成，接口返回结果继续保留 `profit`、`profitRate`、`profitRatePercent`、`riskLevel`、`competitionLevel` 等字段。
+- 新增 `client/src/components/ProfitFilter.jsx`，使用 `select` 提供全部、利润率大于 20%、30%、40% 四个选项。
+- 在 `client/src/services/api.js` 中扩展 `getProducts({ keyword, category, minProfitRate })`，继续使用 `URLSearchParams` 拼接非空参数。
+- 在 `ProductsPage` 中新增 `minProfitRate` 状态，并让搜索、类目筛选、利润率筛选、重置筛选都走同一套商品请求流程。
+- 更新商品列表页空状态文案：没有找到符合条件的商品，请尝试更换关键词、类目或利润率条件。
+- 小范围补充 `ProfitFilter` 样式，让它和 `SearchInput`、`CategoryFilter` 保持在同一个筛选区域内。
+
+### 修改了哪些文件
+- `server/routes/products.js`
+- `client/src/components/ProfitFilter.jsx`
+- `client/src/services/api.js`
+- `client/src/pages/ProductsPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:3000/api/products?minProfitRate=20`
+  - `http://localhost:3000/api/products?minProfitRate=30`
+  - `http://localhost:3000/api/products?minProfitRate=40`
+  - `http://localhost:5173/products`
+
+### 如何测试
+- 后端接口测试：
+  - `http://localhost:3000/api/products?minProfitRate=20`
+  - `http://localhost:3000/api/products?minProfitRate=30`
+  - `http://localhost:3000/api/products?minProfitRate=40`
+  - `http://localhost:3000/api/products?category=车载支架&minProfitRate=30`
+  - `http://localhost:3000/api/products?keyword=直播&category=直播支架&minProfitRate=20`
+  - 使用不存在的关键词组合测试空结果，确认返回 `[]`。
+- 前端页面测试：
+  - 打开 `http://localhost:5173/products`，确认首次显示全部商品。
+  - 选择利润率大于 20%、30%、40%，确认商品列表会重新请求。
+  - 先选择类目，再选择利润率，确认两个条件可以组合。
+  - 输入关键词后点击搜索，确认会结合当前类目和利润率一起筛选。
+  - 使用无结果组合时，确认显示空状态文案。
+  - 点击“重置筛选”，确认 keyword、category、minProfitRate 都清空，并恢复全部商品。
+
+### 本次验证结果
+- `client` 执行 `npm run lint` 通过。
+- `client` 执行 `npm run build` 通过。
+- 使用临时 3100 端口挂载 `productsRouter` 验证后端筛选逻辑：
+  - `minProfitRate=20` 返回 20 条。
+  - `minProfitRate=30` 返回 20 条。
+  - `minProfitRate=40` 返回 20 条。
+  - `category=车载支架&minProfitRate=30` 返回 4 条。
+  - `keyword=直播&category=直播支架&minProfitRate=20` 返回 4 条。
+  - 不存在关键词组合返回 0 条。
+- 随机检查筛选结果，确认仍然包含利润、利润率、风险等级、竞争等级等增强字段。
+
+### 遇到的问题和解决方式
+- 问题 1：后端真实计算里 `profitRate` 是小数，`profitRatePercent` 才是 20、30、40 这种百分比数字。
+- 解决方式：先执行 `enrichProductMetrics(product)` 得到增强字段，再用 `profitRatePercent >= minProfitRate` 做筛选。
+- 问题 2：临时后端验证第一次从项目根目录启动，Node 没有找到 `server/node_modules` 中的 `express`。
+- 解决方式：改为从 `server` 目录启动临时测试服务，验证通过。
+- 问题 3：当前 mock 商品的利润率整体都高于 40%，所以 20%、30%、40% 三档返回数量暂时一致。
+- 解决方式：保持数据不做 Day 17 之外的调整，只验证筛选条件、组合查询和空结果流程正确。
+
+### 今日重点理解知识点
+- 为什么接口参数传的是 `20`、`30`、`40`，后端筛选时要使用 `profitRatePercent`，而不是直接拿小数形式的 `profitRate` 比较。
+- 为什么利润率筛选要放在 `enrichProductMetrics(product)` 之后，因为原始 JSON 中没有后端计算出来的 `profitRatePercent`。
+- `ProductsPage -> getProducts({ keyword, category, minProfitRate }) -> /api/products?keyword=xxx&category=xxx&minProfitRate=30 -> productsRouter -> ProductGrid` 这条组合筛选数据流。
+- 为什么 `ProfitFilter` 只负责 UI，把真正的请求逻辑交给页面和 `services/api.js`。
+
+### 明日计划
+- 进入 Day 18，开始实现商品排序功能。
+- 继续保持后端负责真实排序和筛选，前端负责收集条件并展示结果。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 17 记录

@@ -2,7 +2,7 @@
   {
     "id": 1,
     "productName": "可折叠桌面手机支架",
-    "category": "桌面手机支架",
+    "category": "桌面支架",
     "amazonPrice": 14.99,
     "cost1688": 9.8,
     "shippingCost": 4.5,
@@ -23,7 +23,7 @@
   {
     "id": 2,
     "productName": "真空吸盘车载手机支架",
-    "category": "车载手机支架",
+    "category": "车载支架",
     "amazonPrice": 19.99,
     "cost1688": 14.2,
     "shippingCost": 6.8,
@@ -44,7 +44,7 @@
   {
     "id": 3,
     "productName": "磁吸出风口车载手机支架",
-    "category": "磁吸手机支架",
+    "category": "磁吸支架",
     "amazonPrice": 17.49,
     "cost1688": 11.6,
     "shippingCost": 5.2,
@@ -65,7 +65,7 @@
   {
     "id": 4,
     "productName": "铝合金升降桌面手机支架",
-    "category": "铝合金手机支架",
+    "category": "桌面支架",
     "amazonPrice": 22.99,
     "cost1688": 18.5,
     "shippingCost": 7.4,
@@ -86,7 +86,7 @@
   {
     "id": 5,
     "productName": "直播补光三脚手机支架",
-    "category": "直播手机支架",
+    "category": "直播支架",
     "amazonPrice": 29.99,
     "cost1688": 27.8,
     "shippingCost": 12.5,
@@ -107,7 +107,7 @@
   {
     "id": 6,
     "productName": "鹅颈懒人手机支架",
-    "category": "懒人手机支架",
+    "category": "懒人支架",
     "amazonPrice": 18.99,
     "cost1688": 13.4,
     "shippingCost": 8.6,
@@ -128,7 +128,7 @@
   {
     "id": 7,
     "productName": "平板手机两用折叠支架",
-    "category": "平板/手机两用支架",
+    "category": "折叠支架",
     "amazonPrice": 21.49,
     "cost1688": 15.6,
     "shippingCost": 6.9,
@@ -149,7 +149,7 @@
   {
     "id": 8,
     "productName": "迷你口袋折叠手机支架",
-    "category": "折叠手机支架",
+    "category": "折叠支架",
     "amazonPrice": 12.99,
     "cost1688": 6.3,
     "shippingCost": 3.9,
@@ -170,7 +170,7 @@
   {
     "id": 9,
     "productName": "摩托车防震手机导航支架",
-    "category": "自行车/摩托车手机支架",
+    "category": "车载支架",
     "amazonPrice": 27.49,
     "cost1688": 22.4,
     "shippingCost": 9.8,
@@ -191,7 +191,7 @@
   {
     "id": 10,
     "productName": "床头夹式360旋转手机支架",
-    "category": "床头手机支架",
+    "category": "懒人支架",
     "amazonPrice": 17.99,
     "cost1688": 12.6,
     "shippingCost": 7.2,
@@ -212,7 +212,7 @@
   {
     "id": 11,
     "productName": "磁吸无线充桌面手机支架",
-    "category": "磁吸手机支架",
+    "category": "磁吸支架",
     "amazonPrice": 26.99,
     "cost1688": 24.6,
     "shippingCost": 8.1,
@@ -233,7 +233,7 @@
   {
     "id": 12,
     "productName": "桌面直播俯拍手机支架",
-    "category": "直播手机支架",
+    "category": "直播支架",
     "amazonPrice": 24.49,
     "cost1688": 19.8,
     "shippingCost": 10.6,
@@ -254,7 +254,7 @@
   {
     "id": 13,
     "productName": "可拆卸磁吸折叠桌面手机支架",
-    "category": "磁吸手机支架",
+    "category": "磁吸支架",
     "amazonPrice": 23.99,
     "cost1688": 14.8,
     "shippingCost": 5.9,
@@ -275,7 +275,7 @@
   {
     "id": 14,
     "productName": "双夹臂懒人床头手机支架",
-    "category": "床头手机支架",
+    "category": "懒人支架",
     "amazonPrice": 16.99,
     "cost1688": 11.2,
     "shippingCost": 6.7,
@@ -296,7 +296,7 @@
   {
     "id": 15,
     "productName": "便携旅行卡片式手机支架",
-    "category": "便携旅行手机支架",
+    "category": "折叠支架",
     "amazonPrice": 11.49,
     "cost1688": 4.8,
     "shippingCost": 2.6,
@@ -317,7 +317,7 @@
   {
     "id": 16,
     "productName": "硅胶绑带自行车手机支架",
-    "category": "自行车手机支架",
+    "category": "车载支架",
     "amazonPrice": 15.99,
     "cost1688": 7.9,
     "shippingCost": 4.3,
@@ -338,7 +338,7 @@
   {
     "id": 17,
     "productName": "平板手机两用升降直播支架",
-    "category": "平板/手机两用支架",
+    "category": "直播支架",
     "amazonPrice": 28.49,
     "cost1688": 20.6,
     "shippingCost": 9.1,
@@ -359,7 +359,7 @@
   {
     "id": 18,
     "productName": "迷你折叠磁吸旅行手机支架",
-    "category": "便携旅行手机支架",
+    "category": "折叠支架",
     "amazonPrice": 13.99,
     "cost1688": 7.2,
     "shippingCost": 3.4,
@@ -380,7 +380,7 @@
   {
     "id": 19,
     "productName": "汽车后视镜夹式手机支架",
-    "category": "车载手机支架",
+    "category": "车载支架",
     "amazonPrice": 18.49,
     "cost1688": 13.8,
     "shippingCost": 5.6,
@@ -401,7 +401,7 @@
   {
     "id": 20,
     "productName": "伸缩补光直播桌面手机支架",
-    "category": "直播手机支架",
+    "category": "直播支架",
     "amazonPrice": 25.99,
     "cost1688": 17.4,
     "shippingCost": 8.8,

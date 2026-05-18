@@ -27,12 +27,64 @@ async function readProducts() {
   return products
 }
 
+function filterProductsByKeyword(products, keyword) {
+  const normalizedKeyword = String(keyword || '').trim().toLowerCase()
+
+  if (!normalizedKeyword) {
+    return products
+  }
+
+  return products.filter((product) => {
+    const productName = String(product.productName || '').toLowerCase()
+    const category = String(product.category || '').toLowerCase()
+    const tags = Array.isArray(product.tags) ? product.tags : []
+
+    return (
+      productName.includes(normalizedKeyword) ||
+      category.includes(normalizedKeyword) ||
+      tags.some((tag) => String(tag).toLowerCase().includes(normalizedKeyword))
+    )
+  })
+}
+
+function filterProductsByCategory(products, category) {
+  const normalizedCategory = String(category || '').trim()
+
+  if (!normalizedCategory) {
+    return products
+  }
+
+  return products.filter((product) => product.category === normalizedCategory)
+}
+
+function filterProductsByMinProfitRate(products, minProfitRate) {
+  const normalizedMinProfitRate = String(minProfitRate || '').trim()
+
+  if (!normalizedMinProfitRate) {
+    return products
+  }
+
+  const minProfitRateNumber = Number(normalizedMinProfitRate)
+
+  if (!Number.isFinite(minProfitRateNumber)) {
+    return products
+  }
+
+  return products.filter((product) => product.profitRatePercent >= minProfitRateNumber)
+}
+
 router.get('/', async (req, res) => {
   try {
     const products = await readProducts()
-    const enrichedProducts = products.map((product) => enrichProductMetrics(product))
+    const keywordFilteredProducts = filterProductsByKeyword(products, req.query.keyword)
+    const categoryFilteredProducts = filterProductsByCategory(keywordFilteredProducts, req.query.category)
+    const enrichedProducts = categoryFilteredProducts.map((product) => enrichProductMetrics(product))
+    const filteredProducts = filterProductsByMinProfitRate(
+      enrichedProducts,
+      req.query.minProfitRate,
+    )
 
-    return res.json(enrichedProducts)
+    return res.json(filteredProducts)
   } catch (error) {
     return res.status(500).json({
       status: 'error',

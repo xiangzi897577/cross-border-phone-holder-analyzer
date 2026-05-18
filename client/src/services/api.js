@@ -59,8 +59,28 @@ async function requestJson(path, errorMessages, options = {}) {
   return data
 }
 
-export async function getProducts(options = {}) {
-  const products = await requestJson('/api/products', { default: '获取商品列表失败' }, options)
+export async function getProducts(filters = {}, options = {}) {
+  const params = new URLSearchParams()
+  const { keyword = '', category = '', minProfitRate = '' } = filters || {}
+  const normalizedKeyword = String(keyword || '').trim()
+  const normalizedCategory = String(category || '').trim()
+  const normalizedMinProfitRate = String(minProfitRate || '').trim()
+
+  if (normalizedKeyword) {
+    params.set('keyword', normalizedKeyword)
+  }
+
+  if (normalizedCategory) {
+    params.set('category', normalizedCategory)
+  }
+
+  if (normalizedMinProfitRate) {
+    params.set('minProfitRate', normalizedMinProfitRate)
+  }
+
+  const queryString = params.toString()
+  const path = queryString ? `/api/products?${queryString}` : '/api/products'
+  const products = await requestJson(path, { default: '获取商品列表失败' }, options)
 
   if (!Array.isArray(products)) {
     throw new Error('商品列表数据格式不正确')
