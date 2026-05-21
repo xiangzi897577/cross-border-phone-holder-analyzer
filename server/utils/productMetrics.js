@@ -99,6 +99,20 @@ export function getRiskLevel(product) {
   return 'low'
 }
 
+export function calculateRecommendationScore(product) {
+  const profitRatePercent = calculateProfitRate(product) * 100
+  const estimatedMonthlySales = getValidNumber(product?.estimatedMonthlySales) ?? 0
+  const rating = getValidNumber(product?.rating) ?? 0
+  const competitionScore = getValidNumber(product?.competitionScore) ?? 100
+
+  const profitScore = (Math.min(profitRatePercent, 80) / 80) * 35
+  const salesScore = (Math.min(estimatedMonthlySales, 1000) / 1000) * 25
+  const ratingScore = (Math.min(Math.max(rating, 0), 5) / 5) * 20
+  const lowCompetitionScore = ((100 - Math.min(Math.max(competitionScore, 0), 100)) / 100) * 20
+
+  return roundTo(profitScore + salesScore + ratingScore + lowCompetitionScore, 1)
+}
+
 export function enrichProductMetrics(product) {
   const baseProduct = product && typeof product === 'object' ? product : {}
   const revenueCNY = calculateRevenueCNY(baseProduct)
@@ -117,5 +131,6 @@ export function enrichProductMetrics(product) {
     profitRatePercent: roundTo(profitRate * 100, 1),
     competitionLevel: getCompetitionLevel(baseProduct),
     riskLevel: getRiskLevel(baseProduct),
+    recommendationScore: calculateRecommendationScore(baseProduct),
   }
 }

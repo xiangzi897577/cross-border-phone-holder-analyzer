@@ -61,10 +61,11 @@ async function requestJson(path, errorMessages, options = {}) {
 
 export async function getProducts(filters = {}, options = {}) {
   const params = new URLSearchParams()
-  const { keyword = '', category = '', minProfitRate = '' } = filters || {}
+  const { keyword = '', category = '', minProfitRate = '', sort = '' } = filters || {}
   const normalizedKeyword = String(keyword || '').trim()
   const normalizedCategory = String(category || '').trim()
   const normalizedMinProfitRate = String(minProfitRate || '').trim()
+  const normalizedSort = String(sort || '').trim()
 
   if (normalizedKeyword) {
     params.set('keyword', normalizedKeyword)
@@ -76,6 +77,10 @@ export async function getProducts(filters = {}, options = {}) {
 
   if (normalizedMinProfitRate) {
     params.set('minProfitRate', normalizedMinProfitRate)
+  }
+
+  if (normalizedSort) {
+    params.set('sort', normalizedSort)
   }
 
   const queryString = params.toString()

@@ -73,6 +73,31 @@ function filterProductsByMinProfitRate(products, minProfitRate) {
   return products.filter((product) => product.profitRatePercent >= minProfitRateNumber)
 }
 
+function sortProducts(products, sort) {
+  const normalizedSort = String(sort || '').trim()
+
+  if (!normalizedSort) {
+    return products
+  }
+
+  const sortedProducts = [...products]
+
+  switch (normalizedSort) {
+    case 'profitRateDesc':
+      return sortedProducts.sort((a, b) => b.profitRate - a.profitRate)
+    case 'monthlySalesDesc':
+      return sortedProducts.sort((a, b) => b.estimatedMonthlySales - a.estimatedMonthlySales)
+    case 'ratingDesc':
+      return sortedProducts.sort((a, b) => b.rating - a.rating)
+    case 'competitionScoreAsc':
+      return sortedProducts.sort((a, b) => a.competitionScore - b.competitionScore)
+    case 'recommendationScoreDesc':
+      return sortedProducts.sort((a, b) => b.recommendationScore - a.recommendationScore)
+    default:
+      return products
+  }
+}
+
 router.get('/', async (req, res) => {
   try {
     const products = await readProducts()
@@ -83,8 +108,9 @@ router.get('/', async (req, res) => {
       enrichedProducts,
       req.query.minProfitRate,
     )
+    const sortedProducts = sortProducts(filteredProducts, req.query.sort)
 
-    return res.json(filteredProducts)
+    return res.json(sortedProducts)
   } catch (error) {
     return res.status(500).json({
       status: 'error',

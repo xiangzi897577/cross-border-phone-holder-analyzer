@@ -1002,3 +1002,220 @@ const currentFilePath = fileURLToPath(import.meta.url)
 
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 17 记录
+
+## Day 18 - 2026-05-18：排序功能
+
+### 今日完成内容
+- 在 `server/utils/productMetrics.js` 中新增了 `calculateRecommendationScore(product)`，基于利润率、月销量、评分和竞争指数计算简单推荐评分。
+- 在 `enrichProductMetrics(product)` 中统一附加 `recommendationScore` 字段，保证商品列表、详情和排序都能拿到同一套增强字段。
+- 在 `server/routes/products.js` 中为 `GET /api/products` 增加了 `sort` 查询参数支持。
+- 后端排序支持 `profitRateDesc`、`monthlySalesDesc`、`ratingDesc`、`competitionScoreAsc`、`recommendationScoreDesc`。
+- 后端处理顺序为：先按 `keyword` 筛选，再按 `category` 筛选，再补充商品增强字段，再按 `minProfitRate` 筛选，最后根据 `sort` 排序。
+- 排序前使用 `[...products]` 复制数组，避免直接修改筛选结果数组。
+- 新增 `client/src/components/SortSelect.jsx`，使用 `select` 提供默认排序、利润率、月销量、评分、竞争指数和推荐评分排序选项。
+- 在 `client/src/services/api.js` 中扩展 `getProducts({ keyword, category, minProfitRate, sort })`，继续使用 `URLSearchParams` 拼接非空参数。
+- 在 `ProductsPage` 中新增 `sort` 状态，并让关键词、类目、利润率和排序可以组合请求。
+- 重置筛选时会同时清空 `keyword`、`category`、`minProfitRate` 和 `sort`。
+- 在 `client/src/App.css` 中补充 `SortSelect` 样式，让排序下拉框与现有筛选工具栏风格一致。
+
+### 修改了哪些文件
+- `server/utils/productMetrics.js`
+- `server/routes/products.js`
+- `client/src/components/SortSelect.jsx`
+- `client/src/services/api.js`
+- `client/src/pages/ProductsPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:3000/api/products?sort=profitRateDesc`
+  - `http://localhost:3000/api/products?sort=monthlySalesDesc`
+  - `http://localhost:3000/api/products?sort=ratingDesc`
+  - `http://localhost:3000/api/products?sort=competitionScoreAsc`
+  - `http://localhost:3000/api/products?sort=recommendationScoreDesc`
+  - `http://localhost:5173/products`
+
+### 如何测试
+- 后端接口测试：
+  - `http://localhost:3000/api/products?sort=profitRateDesc`
+  - `http://localhost:3000/api/products?sort=monthlySalesDesc`
+  - `http://localhost:3000/api/products?sort=ratingDesc`
+  - `http://localhost:3000/api/products?sort=competitionScoreAsc`
+  - `http://localhost:3000/api/products?sort=recommendationScoreDesc`
+  - `http://localhost:3000/api/products?category=车载支架&sort=profitRateDesc`
+  - `http://localhost:3000/api/products?keyword=直播&category=直播支架&minProfitRate=20&sort=ratingDesc`
+- 前端页面测试：
+  - 打开 `http://localhost:5173/products`。
+  - 切换不同排序方式，确认商品列表会重新请求接口。
+  - 组合关键词、类目、利润率和排序条件，确认结果仍然正确。
+  - 点击“重置筛选”，确认恢复默认商品列表。
+  - 检查商品卡片原有利润率、竞争指数、评分等字段仍然正常显示。
+
+### 本次验证结果
+- `client` 执行 `npm run lint` 通过。
+- `client` 执行 `npm run build` 通过。
+- 使用临时 3100 端口挂载当前 `productsRouter` 验证后端接口：
+  - `sort=profitRateDesc` 首条为 `便携旅行卡片式手机支架`。
+  - `sort=monthlySalesDesc` 首条为 `迷你口袋折叠手机支架`。
+  - `sort=ratingDesc` 首条为评分最高商品之一 `铝合金升降桌面手机支架`。
+  - `sort=competitionScoreAsc` 首条为 `便携旅行卡片式手机支架`。
+  - `sort=recommendationScoreDesc` 首条为 `便携旅行卡片式手机支架`。
+  - `category=车载支架&sort=profitRateDesc` 返回 4 条车载支架商品。
+  - `keyword=直播&category=直播支架&minProfitRate=20&sort=ratingDesc` 返回 4 条直播支架商品。
+- 使用临时 3101 端口做排序断言验证：
+  - `profitRateDesc` 通过。
+  - `monthlySalesDesc` 通过。
+  - `ratingDesc` 通过。
+  - `competitionScoreAsc` 通过。
+  - `recommendationScoreDesc` 通过。
+
+### 遇到的问题和解决方式
+- 问题 1：当前项目还没有 `recommendationScore` 字段。
+- 解决方式：在已有指标工具 `productMetrics.js` 中新增一个简单评分，使用利润率、月销量、评分和低竞争优势四个容易解释的指标，不提前实现 Day 31 的复杂推荐算法。
+- 问题 2：本机 `3000` 端口已有旧后端进程，不能直接代表本次代码。
+- 解决方式：不关闭现有进程，临时在 `3100` 和 `3101` 端口挂载当前路由完成隔离验证。
+
+### 今日重点理解知识点
+- 为什么排序要放在筛选之后：用户想要的是“当前筛选结果里的排序”，不是先把全部商品排序后再筛。
+- 为什么 `sort()` 前要先用 `[...products]` 复制数组，因为 `sort()` 会原地修改数组。
+- 为什么 `SortSelect` 只负责 UI，不直接请求接口：请求逻辑统一放在 `ProductsPage` 和 `services/api.js` 中，组件更容易复用。
+- `ProductsPage -> getProducts({ keyword, category, minProfitRate, sort }) -> /api/products?...&sort=xxx -> productsRouter -> ProductGrid` 这条排序数据流。
+
+### 明日计划
+- 进入 Day 19，考虑把搜索、筛选、排序整合成统一的 `ProductFilters` 组件，让 `ProductsPage` 更清晰。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 18 记录
+
+## Day 19 - 2026-05-19：整合 ProductFilters
+
+### 今日完成内容
+- 新增 `client/src/components/ProductFilters.jsx`，把搜索框、类目筛选、利润率筛选、排序下拉框和清空按钮整合成统一筛选工具栏。
+- `ProductFilters` 继续复用已有的 `SearchInput`、`CategoryFilter`、`ProfitFilter`、`SortSelect`，自身只负责筛选 UI 和事件转发，不直接请求接口。
+- 在 `ProductsPage` 中使用统一的 `filters` 状态管理 `keyword`、`category`、`minProfitRate`、`sort`。
+- 保留 `ProductsPage` 中的商品请求逻辑，通过 `loadProducts(filters)` 调用 `getProducts(filters)`。
+- 搜索按钮和 Enter 会用当前 `filters` 请求商品；切换类目、利润率、排序会立即带上最新条件请求商品。
+- 新增“清空筛选”按钮，点击后重置四个筛选条件，并重新加载全部商品。
+- 小范围整理筛选工具栏样式，把原来的分散 toolbar 样式调整为 `product-filters` 语义类名。
+
+### 修改了哪些文件
+- `client/src/components/ProductFilters.jsx`
+- `client/src/pages/ProductsPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 如何运行
+- 后端：
+  - `cd server`
+  - `npm start`
+- 前端：
+  - `cd client`
+  - `npm run dev`
+- 访问：
+  - `http://localhost:5173/products`
+
+### 如何测试
+- 打开 `http://localhost:5173/products`，确认商品列表首次加载全部商品。
+- 输入“车载”“磁吸”“折叠”“直播”等关键词，点击“搜索”或按 Enter，确认商品列表刷新。
+- 在关键词基础上切换类目，确认 `keyword + category` 可以组合使用。
+- 继续选择利润率筛选，确认 `keyword + category + minProfitRate` 可以组合使用。
+- 切换排序方式，确认会按当前筛选结果重新排序。
+- 点击“清空筛选”，确认搜索框、类目、利润率、排序全部恢复默认，并重新显示全部商品。
+- 使用无结果组合，确认空状态正常显示。
+- 关闭后端后刷新页面，确认错误状态仍然正常显示。
+
+### 本次验证结果
+- `client` 执行 `npm run lint` 通过。
+- `client` 执行 `npm run build` 通过。
+
+### 遇到的问题和解决方式
+- 问题 1：如果在 `useEffect` 中直接调用会同步 `setState` 的 `loadProducts`，新的 React Hooks lint 规则会报错。
+- 解决方式：首次加载保留在 `useEffect` 内部的异步函数中完成；用户主动搜索、切换筛选和清空筛选继续走 `loadProducts(filters)`。
+- 问题 2：搜索输入框是“点击搜索后请求”，而类目、利润率、排序是“切换后立即请求”。
+- 解决方式：`ProductFilters` 内部区分事件：输入关键词只更新 `filters.keyword`，点击搜索才触发 `onSearch`；下拉框变化会先更新最新 `filters`，再立即触发 `onSearch(nextFilters)`。
+
+### 今日重点理解知识点
+- `ProductFilters` 是“筛选 UI 组合组件”，负责把多个小控件组合起来，并把最新筛选条件通知父组件。
+- `ProductsPage` 是“数据请求页面组件”，负责保存 `filters`、请求商品、处理 loading/error/empty/success 状态和渲染商品列表。
+- `filters` 的流动方向是：`ProductsPage filters` 传给 `ProductFilters`，用户操作后 `ProductFilters` 调用 `onFiltersChange(nextFilters)` 更新父组件状态，需要请求时再调用 `onSearch(nextFilters)`，最后 `ProductsPage` 调用 `getProducts(nextFilters)` 请求后端。
+- 组件拆分的关键不是把代码拆得越碎越好，而是让 UI 事件收集和数据请求职责分开。
+
+### 明日计划
+- 进入 Day 20，集中测试搜索、类目、利润率和排序的组合逻辑。
+- 重点检查空状态、错误状态、组合条件边界和页面体验是否稳定。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 19 记录
+
+## Day 20 - 2026-05-20：筛选功能复盘
+
+### 今日完成内容
+- 复查了 `ProductsPage`、`ProductFilters`、`services/api.js` 和后端 `server/routes/products.js` 的搜索、筛选、排序数据流。
+- 使用临时后端服务测试了组合查询，避免被本机 3000 端口上的旧进程影响。
+- 验证了 `keyword + category`、`category + minProfitRate`、`sort + keyword`、`keyword + category + minProfitRate + sort`、清空筛选、空结果、请求失败等核心场景。
+- 确认 `getProducts` 使用 `URLSearchParams` 拼接查询参数，且空参数不会拼接到 URL 中。
+- 确认后端 `/api/products` 先筛选再排序，排序前会复制数组，不直接修改原数组。
+- 确认筛选和排序后的商品仍然保留 `profit`、`profitRate`、`profitRatePercent`、`riskLevel`、`competitionLevel` 等增强字段。
+- 为 `ProductsPage` 增加最新请求编号，避免快速切换筛选条件时旧请求结果覆盖新请求结果。
+
+### 修改了哪些文件
+- `client/src/pages/ProductsPage.jsx`
+- `docs/DAILY_LOG.md`
+
+### 测试了哪些组合
+- `keyword=磁吸&category=磁吸支架`，返回 3 条。
+- `category=车载支架&minProfitRate=30`，返回 4 条。
+- `keyword=直播&sort=ratingDesc`，返回 4 条，并确认评分从高到低。
+- `keyword=直播&category=直播支架&minProfitRate=30&sort=profitRateDesc`，返回 4 条，并确认利润率从高到低。
+- `keyword=不存在的关键词`，返回空数组 `[]`。
+- 无查询参数访问 `/api/products`，返回全部 20 条商品。
+- 模拟 `fetch` 抛出连接错误，确认 `getProducts` 返回“无法连接到后端服务，请确认 http://localhost:3000 已启动”，页面会进入 error 状态展示。
+
+### 修复了哪些 bug
+- 修复了一个潜在请求竞态问题：用户快速切换关键词、类目、利润率或排序时，较早发出的慢请求可能晚于新请求返回，导致页面显示旧筛选结果。
+- 解决方式是在 `ProductsPage` 中使用 `useRef` 保存最新请求编号，只有最新一次请求可以更新 `products`、`error` 和 `loading` 状态。
+
+### 商品列表筛选当前状态
+- `ProductFilters` 只负责筛选 UI 和事件转发，不直接请求接口。
+- `ProductsPage` 统一管理 `filters`、`products`、`loading`、`error` 状态。
+- 搜索按钮或 Enter 会按当前条件请求接口。
+- 类目、利润率和排序切换后会带上最新筛选条件重新请求接口。
+- 清空筛选会重置 `keyword`、`category`、`minProfitRate`、`sort`，并重新加载全部商品。
+- loading、error、empty、success 四种页面状态都保留在 `ProductsPage` 中统一判断。
+
+### 测试方式
+- 运行前端检查：
+  - `cd client`
+  - `npm run lint`
+  - `npm run build`
+- 运行后端组合断言：
+  - 临时挂载 `productsRouter` 到随机本地端口。
+  - 使用 `fetch` 请求不同查询参数组合。
+  - 断言返回数组数量、排序顺序、类目、利润率和增强字段。
+- 页面手动验证地址：
+  - `http://localhost:5173/products`
+
+### 遇到的问题和解决方式
+- 问题 1：第一次临时脚本直接写中文查询值时，PowerShell 管道里的中文字面量影响了测试判断。
+- 解决方式：测试脚本改用 Unicode escape 构造中文参数，并通过 `URLSearchParams` 拼接查询字符串，避免误判业务代码。
+- 问题 2：前端快速切换筛选条件时存在旧请求覆盖新请求的潜在风险。
+- 解决方式：增加最新请求编号，只允许最后一次请求更新页面状态。
+
+### 今日重点理解知识点
+- 组合筛选的数据流：`ProductFilters` 收集条件，`ProductsPage` 保存 `filters` 并调用 `getProducts(filters)`，`api.js` 用 `URLSearchParams` 拼接查询参数，后端 `/api/products` 先筛选再排序，最后返回增强后的商品数组。
+- 为什么利润率筛选要比较 `profitRatePercent`，因为前端选择的是 `20 / 30 / 40` 这种百分比数字，而不是 `0.2 / 0.3 / 0.4` 的小数。
+- 为什么排序要放在筛选之后：用户需要的是“当前筛选结果内部排序”。
+- 为什么请求状态需要防止竞态：真实页面里用户操作可能很快，旧请求晚返回时不能覆盖新结果。
+
+### 明日计划
+- 进入 Day 21，开始初始化候选池数据文件和 JSON 文件读写工具。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 20 记录
