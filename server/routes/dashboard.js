@@ -65,6 +65,8 @@ router.get('/', async (req, res) => {
         profitRatePercent: product.profitRatePercent,
         competitionScore: product.competitionScore,
         riskLevel: product.riskLevel,
+        riskFactors: product.riskFactors,
+        recommendationScore: product.recommendationScore,
       }))
 
     // Count each category with reduce first, then convert the summary object into an array.

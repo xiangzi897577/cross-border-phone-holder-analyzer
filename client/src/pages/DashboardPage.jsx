@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import CategoryPieChart from '../components/CategoryPieChart.jsx'
+import ProfitRankingChart from '../components/ProfitRankingChart.jsx'
 import StatCard from '../components/StatCard.jsx'
 import { getDashboard } from '../services/api'
 
@@ -57,7 +59,7 @@ function DashboardPage() {
         <h2 className="page-title">Dashboard 数据看板</h2>
         <p className="page-description">
           当前页面会请求 Node 后端的 <code>/api/dashboard</code>{' '}
-          接口，并展示第二周主流程需要的 4 个核心指标。
+          接口，并展示核心指标、利润率排行图和类型分布图。
         </p>
       </div>
 
@@ -70,28 +72,35 @@ function DashboardPage() {
       ) : null}
 
       {!loading && !error && dashboard ? (
-        <div className="dashboard-page__stats">
-          <StatCard
-            title="总商品数"
-            value={formatNumber(dashboard.totalProducts)}
-            description="当前商品池中的候选商品数量"
-          />
-          <StatCard
-            title="平均利润率"
-            value={formatPercent(averageProfitRatePercent)}
-            description="基于后端利润模型计算的平均利润率"
-          />
-          <StatCard
-            title="高潜力商品数"
-            value={formatNumber(dashboard.highPotentialCount)}
-            description="利润和竞争表现较好的候选商品"
-          />
-          <StatCard
-            title="风险商品数"
-            value={formatNumber(dashboard.riskProductCount)}
-            description="风险等级较高或需要谨慎评估的商品"
-          />
-        </div>
+        <>
+          <div className="dashboard-page__stats">
+            <StatCard
+              title="总商品数"
+              value={formatNumber(dashboard.totalProducts)}
+              description="当前商品池中的候选商品数量"
+            />
+            <StatCard
+              title="平均利润率"
+              value={formatPercent(averageProfitRatePercent)}
+              description="基于后端利润模型计算的平均利润率"
+            />
+            <StatCard
+              title="高潜力商品数"
+              value={formatNumber(dashboard.highPotentialCount)}
+              description="利润和竞争表现较好的候选商品"
+            />
+            <StatCard
+              title="风险商品数"
+              value={formatNumber(dashboard.riskProductCount)}
+              description="风险等级较高或需要谨慎评估的商品"
+            />
+          </div>
+
+          <div className="dashboard-page__charts">
+            <ProfitRankingChart topProfitProducts={dashboard.topProfitProducts} />
+            <CategoryPieChart categoryDistribution={dashboard.categoryDistribution} />
+          </div>
+        </>
       ) : null}
     </section>
   )

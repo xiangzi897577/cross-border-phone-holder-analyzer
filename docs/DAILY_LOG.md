@@ -1565,3 +1565,383 @@ const currentFilePath = fileURLToPath(import.meta.url)
 
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 26 记录
+
+## Day 27 - 2026-06-01：安装并使用 Recharts
+
+### 今日完成内容
+- 在 `client` 前端项目中安装了 `recharts`。
+- 创建了 `client/src/components/BasicChart.jsx` 基础图表组件。
+- 在 `BasicChart` 中使用固定测试数据展示手机支架类型数量。
+- 使用了 `BarChart` 展示柱状图。
+- 使用了 `PieChart` 展示饼图。
+- 两个图表都使用 `ResponsiveContainer` 做宽度自适应。
+- 两个图表都接入了 `Tooltip`，鼠标悬停时可以查看当前图表项数据。
+- 在 `AnalysisPage` 中展示“选品分析图表”，今天只做测试图表，不对接真实 Dashboard 数据。
+- 补充了图表卡片和图表区域基础样式。
+
+### 修改了哪些文件
+- `client/package.json`
+- `client/package-lock.json`
+- `client/src/components/BasicChart.jsx`
+- `client/src/pages/AnalysisPage.jsx`
+- `client/src/App.css`
+- `client/vite.config.js`
+- `docs/DAILY_LOG.md`
+
+### 测试方式
+- 启动前端：
+  - `cd client`
+  - `npm run dev`
+- 访问 `http://localhost:5173/analysis`：
+  - 确认页面可以正常打开。
+  - 确认能看到基础柱状图和饼图。
+  - 鼠标悬停图表项，确认 Tooltip 可以显示数据。
+  - 调整浏览器宽度，确认图表容器宽度自适应。
+- 回归访问其他页面：
+  - `http://localhost:5173/`
+  - `http://localhost:5173/products`
+  - `http://localhost:5173/favorites`
+- 前端检查：
+  - `cd client`
+  - `npm run lint`
+  - `npm run build`
+
+### 遇到的问题和解决方式
+- 问题 1：`ResponsiveContainer` 需要父容器有明确高度，否则图表可能显示不出来。
+- 解决方式：给 `.basic-chart__chart-area` 设置 `height: 300px`，让 Recharts 有可计算的渲染空间。
+- 问题 2：今天的目标是先熟悉 Recharts，不应该提前做复杂分析。
+- 解决方式：测试数据直接写在 `BasicChart` 内部，暂时不请求接口、不改 Dashboard、不新增复杂封装。
+- 问题 3：开发环境打开页面时出现空白页，浏览器控制台报错来自 Vite 预构建后的 `recharts.js`。
+- 解决方式：在 `vite.config.js` 中通过 `optimizeDeps.exclude` 排除 `recharts`，让开发环境直接加载 Recharts 的 ESM 模块，避免预构建产物报错。
+- 问题 4：安装 Recharts 后，`package-lock.json` 将 Vite 解析到了 `8.0.11`，本地启动开发服务时出现 `failed to load config`。
+- 解决方式：把 `vite` 固定回项目原来的 `8.0.10`，减少 Day 27 对开发服务器版本的额外影响。
+- 问题 5：`recharts@3.8.1` 在当前 Vite 开发环境中预构建后出现运行时报错，进入分析页会导致白屏。
+- 解决方式：将 Recharts 固定为更稳定的 `2.15.4`，并清理 `node_modules/.vite` 后重新启动前端服务。
+- 问题 6：图表库运行时报错时会影响整个页面渲染。
+- 解决方式：在 `AnalysisPage` 中使用 `lazy` 和 `Suspense` 懒加载 `BasicChart`，让图表代码只在进入分析页时加载，降低对其他页面的影响。
+
+### 今日重点理解知识点
+- `BarChart` 适合对比不同手机支架类型的数量或指标高低。
+- `PieChart` 适合观察不同类型在整体中的占比感觉。
+- `ResponsiveContainer` 负责让图表跟随父容器尺寸变化，常用写法是 `width="100%" height="100%"`。
+- `Tooltip` 是图表的悬停提示组件，可以让用户看到当前柱子或扇区对应的数据。
+- Recharts 图表通常由外层图表组件、坐标轴、图形元素和交互组件组合出来。
+
+### 明日计划
+- 进入 Day 28，创建 Dashboard 利润率排行图。
+- 使用 `GET /api/dashboard` 返回的 `topProfitProducts` 数据，把真实业务数据接入图表。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 27 记录
+
+## Day 28 - 2026-06-02：Dashboard 利润率排行图
+
+### 今日完成内容
+- 创建了 `client/src/components/ProfitRankingChart.jsx`。
+- 在 `ProfitRankingChart` 中使用 Recharts 的 `BarChart` 展示利润率排行。
+- 图表使用 `ResponsiveContainer` 实现宽度自适应。
+- 图表接入 `Tooltip`，悬停时可以看到完整商品名称和利润率。
+- 组件接收 `topProfitProducts` 或 `products` 作为 props，不在组件内部请求接口。
+- 在 `DashboardPage` 中使用 `/api/dashboard` 返回的 `topProfitProducts` 数据渲染利润率排行图。
+- 保留 Dashboard 原有 4 个指标卡、loading 状态、error 状态和空数据状态。
+- 为利润率排行图添加了卡片样式和空状态样式。
+
+### 修改了哪些文件
+- `client/src/components/ProfitRankingChart.jsx`
+- `client/src/pages/DashboardPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 测试方式
+- 启动后端：
+  - `cd server`
+  - `npm start`
+- 浏览器访问 `http://localhost:3000/api/dashboard`：
+  - 确认返回数据包含 `topProfitProducts`。
+  - 确认 `topProfitProducts` 中商品包含 `id`、`productName`、`profit`、`profitRate`、`profitRatePercent`。
+- 启动前端：
+  - `cd client`
+  - `npm run dev`
+- 浏览器访问 `http://localhost:5173/`：
+  - 确认原有 Dashboard 指标卡正常显示。
+  - 确认页面出现“利润率排行”柱状图。
+  - 鼠标悬停柱子，确认 Tooltip 可以显示商品和利润率。
+  - 调整浏览器宽度，确认图表宽度自适应。
+- 前端检查：
+  - `cd client`
+  - `npm run lint`
+  - `npm run build`
+
+### 遇到的问题和解决方式
+- 问题 1：手机支架商品名称较长，横向柱状图如果直接显示完整名称会拥挤。
+- 解决方式：图表使用横向柱状图，纵轴展示截断后的商品名，Tooltip 中保留完整商品名。
+- 问题 2：接口可能优先返回 `profitRatePercent`，也可能只有 `profitRate` 小数字段。
+- 解决方式：组件中先使用 `profitRatePercent`，如果没有则把 `profitRate * 100` 转成百分比。
+- 问题 3：`ResponsiveContainer` 需要父容器高度，否则图表可能没有渲染空间。
+- 解决方式：为 `.profit-ranking-chart__chart-area` 设置固定高度 `320px`。
+
+### 今日重点理解知识点
+- `DashboardPage` 负责请求 `/api/dashboard`，拿到数据后通过 props 传给图表组件。
+- `ProfitRankingChart` 只负责展示数据，不负责请求接口，这样组件更容易复用和测试。
+- `topProfitProducts` 来自后端 Dashboard 统计逻辑，由商品数据经过利润计算后按利润率排序得到。
+- `profitRatePercent` 是已经计算好的百分比，适合直接展示；`profitRate` 是小数，需要乘以 `100` 后展示。
+
+### 明日计划
+- 进入 Day 29，创建类目分布图。
+- 使用 `/api/dashboard` 返回的 `categoryDistribution` 数据展示手机支架类型分布。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 28 记录
+
+## Day 29 - 2026-06-02：类目分布图
+
+### 今日完成内容
+- 创建了 `client/src/components/CategoryPieChart.jsx`。
+- 在 `CategoryPieChart` 中使用 Recharts 的 `PieChart` 展示手机支架类型分布。
+- 图表使用 `ResponsiveContainer` 实现宽度自适应。
+- 图表接入 `Tooltip`，鼠标悬停扇区时可以看到对应类型和商品数量。
+- 图表接入 `Legend`，方便识别不同手机支架类型。
+- 组件接收 `categoryDistribution` 作为 props，不在组件内部请求接口。
+- 兼容后端当前返回的 `{ category, count }` 数组格式，也兼容对象格式和 `{ name, value }` 数组格式。
+- 在 `DashboardPage` 中使用 `/api/dashboard` 返回的 `categoryDistribution` 数据渲染手机支架类型分布饼图。
+- 保留 Dashboard 原有 4 个指标卡、loading 状态、error 状态和 Day 28 的 `ProfitRankingChart`。
+- 为类型分布饼图添加了和当前 Dashboard 风格一致的卡片样式和空状态样式。
+
+### 修改了哪些文件
+- `client/src/components/CategoryPieChart.jsx`
+- `client/src/pages/DashboardPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 测试方式
+- 启动后端：
+  - `cd server`
+  - `npm start`
+- 浏览器访问 `http://localhost:3000/api/dashboard`：
+  - 确认返回数据包含 `categoryDistribution`。
+  - 确认当前 `categoryDistribution` 是 `{ category, count }` 数组，可以表示不同手机支架类型的数量分布。
+- 启动前端：
+  - `cd client`
+  - `npm run dev`
+- 浏览器访问 `http://localhost:5173/`：
+  - 确认 Dashboard 原有指标卡正常显示。
+  - 确认“利润率排行”柱状图仍然正常显示。
+  - 确认新增“手机支架类型分布”饼图。
+  - 鼠标悬停饼图扇区，确认 Tooltip 可以显示类型和数量。
+  - 调整浏览器宽度，确认图表宽度自适应。
+- 前端检查：
+  - `cd client`
+  - `npm run lint`
+  - `npm run build`
+
+### 遇到的问题和解决方式
+- 问题 1：后端当前 `categoryDistribution` 不是对象格式，而是 `{ category, count }` 数组格式。
+- 解决方式：在 `CategoryPieChart` 中增加 `normalizeCategoryDistribution()`，把数组格式转换为 Recharts 统一使用的 `{ name, value }` 格式。
+- 问题 2：后续如果后端改成对象格式，组件可能因为字段不一致无法显示。
+- 解决方式：组件同时兼容对象格式、`{ category, count }` 数组格式和 `{ name, value }` 数组格式。
+- 问题 3：`ResponsiveContainer` 需要父容器有明确高度，否则饼图可能没有渲染空间。
+- 解决方式：为 `.category-pie-chart__chart-area` 设置固定高度 `320px`。
+
+### 今日重点理解知识点
+- `DashboardPage` 负责请求 `/api/dashboard`，拿到数据后通过 props 传给图表组件。
+- `CategoryPieChart` 只负责把传入的数据转换成图表需要的格式并展示，不负责请求接口。
+- Recharts 的 `Pie` 通常需要 `dataKey="value"` 指定数值字段，用 `nameKey="name"` 指定名称字段。
+- 后端统计格式 `{ category, count }` 更贴近业务语义，前端图表格式 `{ name, value }` 更贴近 Recharts 约定，所以中间需要做一次轻量转换。
+- 空数据时先展示空状态，避免图表组件拿到无效数据后页面崩溃。
+
+### 明日计划
+- 进入 Day 30，完成 `AnalysisPage` 基础版。
+- 展示高潜力商品、高风险商品、低竞争高利润商品和推荐理由。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 29 记录
+
+## Day 30 - 2026-06-02：选品分析页基础版
+
+### 今日完成内容
+- 在 `AnalysisPage` 中请求 `GET /api/products` 商品数据。
+- 完成选品分析页的 `loading / error / empty / success` 四种状态。
+- 展示“高潜力商品”分析区块。
+- 展示“高风险商品”分析区块。
+- 展示“低竞争高利润商品”分析区块。
+- 每个分析商品卡片展示商品名称、类目、利润率、竞争指数、风险等级、推荐评分和推荐理由。
+- 每个分析商品卡片支持跳转到 `/products/:id` 商品详情页。
+- 为分析页补充专用样式，让三个分析区块视觉上更容易区分。
+
+### 修改了哪些文件
+- `client/src/pages/AnalysisPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 测试方式
+- 前端静态检查：
+  - `cd client`
+  - `npm run lint`
+- 前端生产构建：
+  - `cd client`
+  - `npm run build`
+- 页面联调测试：
+  - 启动后端：`cd server && npm start`
+  - 启动前端：`cd client && npm run dev`
+  - 访问 `http://localhost:5173/analysis`
+  - 确认页面能看到高潜力商品、高风险商品、低竞争高利润商品和推荐理由。
+  - 点击分析卡片中的“查看商品详情”，确认可以进入 `/products/:id`。
+
+### 遇到的问题和解决方式
+- 问题 1：当前商品利润率普遍很高，如果直接使用 `profitRatePercent >= 30`，区分度不够。
+- 解决方式：结合当前 mock 数据，把高潜力和低竞争高利润规则中的利润率阈值设为 `220%`，让页面更能体现分析筛选效果。
+- 问题 2：`recommendationReason` 当前是字符串，但后续也可能调整成数组。
+- 解决方式：在分析页中增加轻量格式化函数，兼容字符串和数组两种展示方式。
+- 问题 3：同一商品可能同时属于高潜力和低竞争高利润。
+- 解决方式：允许商品出现在多个分析区块中，因为不同区块代表不同业务视角。
+
+### 今日重点理解知识点
+- `AnalysisPage` 通过 `useEffect` 在页面加载时请求商品数据。
+- `useMemo` 可以把基于商品列表计算出来的分析分组缓存起来，避免每次渲染都重复筛选。
+- `filter()` 适合根据业务规则筛选商品，`sort()` 适合把更值得关注的商品排在前面，`slice()` 适合控制页面展示数量。
+- 分析页不是简单列表，而是把同一批商品按不同业务问题分组展示。
+- 推荐理由来自商品数据中的 `recommendationReason` 字段，前端只负责格式化和展示。
+
+### 明日计划
+- 进入 Day 31，继续完善推荐评分算法。
+- 根据利润率、月销量、评分、竞争指数、物流成本和重量体积等因素优化推荐评分逻辑。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 30 记录
+
+## Day 31 - 2026-06-02：推荐评分算法
+
+### 今日完成内容
+- 在 `server/utils/productMetrics.js` 中完善 `calculateRecommendationScore(product)`。
+- 推荐评分现在综合利润率、月销量、评分、竞争指数、物流成本、重量和体积等级。
+- 推荐评分范围控制在 `0 - 100`，分数越高代表越值得优先选品。
+- `enrichProductMetrics(product)` 继续统一返回 `recommendationScore`，不影响原有 `profit`、`profitRate`、`profitRatePercent`、`riskLevel`、`competitionLevel` 等字段。
+- `GET /api/products`、`GET /api/products/:id`、`GET /api/favorites` 会通过 `enrichProductMetrics` 返回推荐评分。
+- `GET /api/dashboard` 的 `topProfitProducts` 也补充返回 `recommendationScore`。
+- `AnalysisPage` 的高潜力商品继续优先按 `recommendationScore` 从高到低排序。
+- 分析商品卡片展示整数推荐评分，商品详情页也补充展示推荐评分。
+
+### 修改了哪些文件
+- `server/utils/productMetrics.js`
+- `server/routes/dashboard.js`
+- `client/src/pages/AnalysisPage.jsx`
+- `client/src/pages/ProductDetailPage.jsx`
+- `docs/DAILY_LOG.md`
+
+### 评分规则说明
+- 利润率：最高 30 分，利润率越高分数越高，按最高 `250%` 做封顶。
+- 月销量：最高 20 分，销量越高分数越高，按最高 `1000` 件/月做封顶。
+- 评分：最高 20 分，评分越接近 `5.0` 分数越高。
+- 低竞争：最高 15 分，`competitionScore` 越低分数越高。
+- 低物流成本：最高 10 分，物流成本越低分数越高，按 `15` 元做封顶。
+- 重量/体积：最高 5 分，其中重量最高 3 分，体积等级最高 2 分，小体积优于中体积和大体积。
+
+### 测试方式
+- 后端字段检查：
+  - `http://localhost:3000/api/products`
+  - `http://localhost:3000/api/products/1`
+  - `http://localhost:3000/api/favorites`
+  - `http://localhost:3000/api/dashboard`
+- 前端页面检查：
+  - `http://localhost:5173/analysis`
+  - 确认高潜力商品按推荐评分从高到低展示。
+  - 确认分析卡片能看到“推荐评分”。
+  - 确认推荐理由、高风险商品、低竞争高利润商品仍然正常展示。
+- 静态检查：
+  - `cd client`
+  - `npm run lint`
+  - `npm run build`
+
+### 遇到的问题和解决方式
+- 问题 1：旧版推荐评分只考虑利润率、销量、评分和竞争指数，没有覆盖 Day 31 要求的物流成本和轻小件属性。
+- 解决方式：在 `calculateRecommendationScore` 中补充 `shippingCost`、`weight`、`volumeLevel` 三类因素，并保持权重简单可解释。
+- 问题 2：接口里的 Dashboard 摘要商品原来只返回利润相关字段。
+- 解决方式：在 `topProfitProducts` 的映射结果中补充 `recommendationScore`，方便 Dashboard 相关商品数据也能拿到评分。
+- 问题 3：缺失字段可能导致计算结果异常。
+- 解决方式：继续使用 `getValidNumber` 和默认值处理缺失字段，并用 `clamp` 把各维度控制在合理范围内。
+
+### 今日重点理解知识点
+- 推荐评分不是机器学习算法，而是“业务权重 + 简单归一化”的综合排序规则。
+- `calculateRecommendationScore` 只负责算分，`enrichProductMetrics` 负责把算好的字段统一加到商品对象上。
+- 只要接口返回商品前调用了 `enrichProductMetrics`，前端就可以直接使用 `recommendationScore`。
+- `AnalysisPage` 不重新计算评分，只消费后端返回的字段，并用 `sort()` 按分数排序展示。
+
+### 明日计划
+- 进入 Day 32，完善风险分析模块。
+- 进一步整理 `riskFactors` 的生成逻辑，并在前端更清晰地展示风险原因。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 31 记录
+
+## Day 32 - 2026-06-02：风险分析模块
+
+### 今日完成内容
+- 在 `server/utils/productMetrics.js` 中新增 `calculateRiskFactors(product)`。
+- 风险原因现在按利润率、竞争指数、评分、评论数、物流成本、重量/体积生成数组。
+- `riskLevel` 改为根据 `riskFactors` 数量判断：0 个为低风险，1-2 个为中风险，3 个及以上为高风险。
+- `enrichProductMetrics(product)` 统一返回 `riskFactors` 和 `riskLevel`，不影响原有利润、利润率、竞争等级和推荐评分字段。
+- `GET /api/dashboard` 的 `topProfitProducts` 摘要商品补充返回 `riskFactors`。
+- 商品详情页在“市场与风险”模块中使用标签展示风险原因；没有风险原因时显示“暂无明显风险”。
+- `AnalysisPage` 高风险商品模块继续按 `riskLevel` 和风险因素数量筛选，并优先展示风险原因标签。
+
+### 修改了哪些文件
+- `server/utils/productMetrics.js`
+- `server/routes/dashboard.js`
+- `client/src/pages/ProductDetailPage.jsx`
+- `client/src/pages/AnalysisPage.jsx`
+- `client/src/App.css`
+- `docs/DAILY_LOG.md`
+
+### 风险判断规则说明
+- `profitRatePercent < 20`：利润率过低。
+- `competitionScore >= 70`：竞争指数过高。
+- `rating < 4.2`：评分过低。
+- `reviewCount < 50`：评论数过少。
+- `shippingCost > 10`：物流成本偏高。
+- `weight >= 0.5` 或 `volumeLevel === 'large'`：重量/体积不适合轻小件。
+
+### 风险等级规则
+- `riskFactors.length === 0`：低风险。
+- `riskFactors.length` 为 `1-2`：中风险。
+- `riskFactors.length >= 3`：高风险。
+
+### 测试方式
+- 启动后端：
+  - `cd server`
+  - `npm start`
+- 检查接口：
+  - `http://localhost:3000/api/products`
+  - `http://localhost:3000/api/products/1`
+  - `http://localhost:3000/api/favorites`
+  - `http://localhost:3000/api/dashboard`
+- 启动前端：
+  - `cd client`
+  - `npm run dev`
+- 检查页面：
+  - `http://localhost:5173/products/1`
+  - `http://localhost:5173/analysis`
+- 静态检查：
+  - `cd client`
+  - `npm run lint`
+  - `npm run build`
+
+### 遇到的问题和解决方式
+- 问题 1：原始商品数据中已有 `riskFactors`，但内容更偏商品描述，不适合统一计算风险等级。
+- 解决方式：在 `enrichProductMetrics` 中用后端统一计算后的 `riskFactors` 覆盖返回字段，让接口风险原因和 `riskLevel` 保持一致。
+- 问题 2：如果只按 `riskLevel` 展示，高风险商品不容易解释为什么高风险。
+- 解决方式：分析页高风险卡片优先展示风险标签，详情页也展示同一组风险原因。
+- 问题 3：部分字段可能缺失或格式异常。
+- 解决方式：继续使用 `getValidNumber` 做安全数字转换，缺失字段不会导致接口崩溃。
+
+### 今日重点理解知识点
+- `calculateRiskFactors` 负责把商品数据转换成“可解释的风险原因数组”。
+- `getRiskLevel` 不再重复写一套风险条件，而是基于风险原因数量生成等级。
+- `enrichProductMetrics` 是接口返回计算字段的统一入口，只要商品接口调用它，前端就能拿到 `riskFactors`。
+- 前端详情页和分析页只负责展示后端返回的风险结果，不重新计算业务规则。
+
+### 明日计划
+- 进入 Day 33，全局 UI 优化。
+- 统一页面间距、颜色、标签和按钮细节，让项目更接近可展示作品。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 32 记录

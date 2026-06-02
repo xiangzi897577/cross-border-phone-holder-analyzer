@@ -252,18 +252,21 @@ function ProductDetailPage() {
                 <DetailItem label="竞争指数" value={formatNumber(product.competitionScore)} />
                 <DetailItem label="竞争等级" value={formatLevel(product.competitionLevel)} />
                 <DetailItem label="风险等级" value={formatLevel(product.riskLevel)} />
+                <DetailItem label="推荐评分" value={formatNumber(product.recommendationScore)} />
               </dl>
 
               <div className="detail-page__list-block">
                 <h4 className="detail-page__list-title">风险因素</h4>
                 {riskFactors.length > 0 ? (
-                  <ul className="detail-page__bullet-list">
+                  <div className="detail-page__risk-tag-list">
                     {riskFactors.map((riskFactor) => (
-                      <li key={riskFactor}>{riskFactor}</li>
+                      <span key={riskFactor} className="detail-page__risk-tag">
+                        {riskFactor}
+                      </span>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
-                  <p className="detail-page__empty-text">暂无</p>
+                  <p className="detail-page__empty-text">暂无明显风险</p>
                 )}
               </div>
             </section>

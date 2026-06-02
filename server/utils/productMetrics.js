@@ -9,6 +9,10 @@ function roundTo(value, digits) {
   return Number(value.toFixed(digits))
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max)
+}
+
 function calculateRevenueCNY(product) {
   const amazonPrice = getValidNumber(product?.amazonPrice) ?? 0//安全取值
   return roundTo(amazonPrice * BUSINESS_CONFIG.usdToCny, 2)
@@ -68,35 +72,54 @@ export function getCompetitionLevel(product) {
 }
 
 export function getRiskLevel(product) {
-  const profitRate = calculateProfitRate(product)
-  const competitionScore = getValidNumber(product?.competitionScore)
-  const rating = getValidNumber(product?.rating)
-  const reviewCount = getValidNumber(product?.reviewCount)
-  const shippingCost = getValidNumber(product?.shippingCost)
-  const cost1688 = getValidNumber(product?.cost1688)
-  const volumeLevel = product?.volumeLevel
+  const riskFactors = calculateRiskFactors(product)
 
-  // 风险判断先看 high，再看 medium，避免高风险商品被提前归到中风险。
-  if (
-    profitRate < 0.15 ||
-    (competitionScore !== null && competitionScore >= 80) ||
-    (rating !== null && rating < 4.2) ||
-    (shippingCost !== null && cost1688 !== null && shippingCost > cost1688) ||
-    volumeLevel === 'large'
-  ) {
+  if (riskFactors.length >= 3) {
     return 'high'
   }
 
-  if (
-    profitRate < 0.3 ||
-    (competitionScore !== null && competitionScore >= 60) ||
-    (rating !== null && rating < 4.5) ||
-    (reviewCount !== null && reviewCount < 100)
-  ) {
+  if (riskFactors.length >= 1) {
     return 'medium'
   }
 
   return 'low'
+}
+
+export function calculateRiskFactors(product) {
+  const profitRatePercent = calculateProfitRate(product) * 100
+  const competitionScore = getValidNumber(product?.competitionScore)
+  const rating = getValidNumber(product?.rating)
+  const reviewCount = getValidNumber(product?.reviewCount)
+  const shippingCost = getValidNumber(product?.shippingCost)
+  const weight = getValidNumber(product?.weight)
+  const volumeLevel = product?.volumeLevel
+  const riskFactors = []
+
+  if (profitRatePercent < 20) {
+    riskFactors.push('利润率过低')
+  }
+
+  if (competitionScore !== null && competitionScore >= 70) {
+    riskFactors.push('竞争指数过高')
+  }
+
+  if (rating !== null && rating < 4.2) {
+    riskFactors.push('评分过低')
+  }
+
+  if (reviewCount !== null && reviewCount < 50) {
+    riskFactors.push('评论数过少')
+  }
+
+  if (shippingCost !== null && shippingCost > 10) {
+    riskFactors.push('物流成本偏高')
+  }
+
+  if ((weight !== null && weight >= 0.5) || volumeLevel === 'large') {
+    riskFactors.push('重量/体积不适合轻小件')
+  }
+
+  return riskFactors
 }
 
 export function calculateRecommendationScore(product) {
@@ -104,13 +127,29 @@ export function calculateRecommendationScore(product) {
   const estimatedMonthlySales = getValidNumber(product?.estimatedMonthlySales) ?? 0
   const rating = getValidNumber(product?.rating) ?? 0
   const competitionScore = getValidNumber(product?.competitionScore) ?? 100
+  const shippingCost = getValidNumber(product?.shippingCost) ?? 15
+  const weight = getValidNumber(product?.weight) ?? 1
+  const volumeLevel = product?.volumeLevel
 
-  const profitScore = (Math.min(profitRatePercent, 80) / 80) * 35
-  const salesScore = (Math.min(estimatedMonthlySales, 1000) / 1000) * 25
-  const ratingScore = (Math.min(Math.max(rating, 0), 5) / 5) * 20
-  const lowCompetitionScore = ((100 - Math.min(Math.max(competitionScore, 0), 100)) / 100) * 20
+  const profitScore = (clamp(profitRatePercent, 0, 250) / 250) * 30
+  const salesScore = (clamp(estimatedMonthlySales, 0, 1000) / 1000) * 20
+  const ratingScore = (clamp(rating, 0, 5) / 5) * 20
+  const lowCompetitionScore = ((100 - clamp(competitionScore, 0, 100)) / 100) * 15
+  const lowShippingCostScore = ((15 - clamp(shippingCost, 0, 15)) / 15) * 10
+  const lightWeightScore = ((1 - clamp(weight, 0, 1)) / 1) * 3
+  const smallVolumeScore =
+    volumeLevel === 'small' ? 2 : volumeLevel === 'medium' ? 1 : 0
 
-  return roundTo(profitScore + salesScore + ratingScore + lowCompetitionScore, 1)
+  const totalScore =
+    profitScore +
+    salesScore +
+    ratingScore +
+    lowCompetitionScore +
+    lowShippingCostScore +
+    lightWeightScore +
+    smallVolumeScore
+
+  return Math.round(clamp(totalScore, 0, 100))
 }
 
 export function enrichProductMetrics(product) {
@@ -131,6 +170,7 @@ export function enrichProductMetrics(product) {
     profitRatePercent: roundTo(profitRate * 100, 1),
     competitionLevel: getCompetitionLevel(baseProduct),
     riskLevel: getRiskLevel(baseProduct),
+    riskFactors: calculateRiskFactors(baseProduct),
     recommendationScore: calculateRecommendationScore(baseProduct),
   }
 }
