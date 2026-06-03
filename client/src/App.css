@@ -98,7 +98,7 @@
 .top-header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 24px;
   padding: 24px 28px;
 }
@@ -129,30 +129,6 @@
   max-width: 760px;
   color: #475569;
   line-height: 1.7;
-}
-
-.top-header__status {
-  min-width: 220px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  border: 1px solid #bfdbfe;
-  background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
-}
-
-.top-header__stage,
-.top-header__note {
-  margin: 0;
-}
-
-.top-header__stage {
-  font-weight: 700;
-  color: #1e3a8a;
-}
-
-.top-header__note {
-  margin-top: 8px;
-  color: #475569;
-  line-height: 1.6;
 }
 
 .dashboard-layout__main {
@@ -1407,11 +1383,6 @@
 
   .top-header {
     flex-direction: column;
-  }
-
-  .top-header__status {
-    width: 100%;
-    min-width: 0;
   }
 
   .dashboard-layout__page {

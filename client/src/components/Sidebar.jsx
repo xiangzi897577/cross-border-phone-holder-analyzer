@@ -14,7 +14,7 @@ function Sidebar() {
         <p className="sidebar__eyebrow">Cross-border Commerce</p>
         <h1 className="sidebar__title">手机支架选品分析</h1>
         <p className="sidebar__description">
-          当前进入图表与选品分析阶段，重点完善 Dashboard 可视化和 Analysis 业务分析展示。
+          聚焦手机支架轻小件品类，模拟跨境电商卖家的利润测算、风险判断和候选池管理流程。
         </p>
       </div>
 

@@ -36,7 +36,7 @@ function getHeaderConfig(pathname) {
     headerConfig[pathname] || {
       eyebrow: '当前项目',
       title: '跨境电商手机支架选品分析平台',
-      description: '第五阶段聚焦图表与选品分析，让 Dashboard 和 Analysis 页面更有业务展示感。',
+      description: '围绕利润、竞争、风险和推荐评分，辅助筛选更值得跟进的手机支架候选商品。',
     }
   )
 }
@@ -51,11 +51,6 @@ function Header() {
         <p className="top-header__eyebrow">{currentHeader.eyebrow}</p>
         <h2 className="top-header__title">{currentHeader.title}</h2>
         <p className="top-header__description">{currentHeader.description}</p>
-      </div>
-
-      <div className="top-header__status">
-        <p className="top-header__stage">当前阶段：Day 30 选品分析页基础版</p>
-        <p className="top-header__note">高潜力、高风险与低竞争高利润分析已接入</p>
       </div>
     </header>
   )
