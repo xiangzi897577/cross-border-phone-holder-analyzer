@@ -6,18 +6,19 @@
 
 项目通过本地 mock 数据模拟 Amazon 候选商品与 1688 货源信息，围绕利润测算、竞争强度、物流成本、风险等级、推荐评分、候选池管理和图表分析，帮助跨境电商卖家快速筛选更值得跟进的商品。
 
-当前版本已经完成 mock 数据阶段的核心业务闭环，包括商品列表、商品详情、Dashboard 数据看板、选品分析、候选池管理、推荐评分和风险分析等功能。
+当前版本已经完成 mock 数据阶段的核心业务闭环，包括商品列表、商品详情、Dashboard 数据看板、选品分析、候选池管理、推荐评分和风险分析等功能，并已完成 Vercel 线上部署。
 
-后续阶段将重点进行 UI 优化、商品图片补齐、部署上线、README 截图、简历描述和面试讲解准备。数据库、真实 1688 / Amazon API、UI 组件库等能力不再作为绝对限制，而是根据后续明确任务逐步扩展。
+后续阶段将重点进行 README 截图、简历描述和面试讲解准备。真实 1688 / Amazon API、登录鉴权、完整数据库商品表等能力不再作为绝对限制，而是根据后续明确任务逐步扩展。
 
 ---
 
 ## 在线预览
 
-> 部署完成后补充以下地址。
+> 已完成 Vercel 部署。实际 URL 可在确认后补充到这里。
 
-* 前端预览地址：待补充
-* 后端接口地址：待补充
+* 前端预览地址：https://cross-border-phone-holder-analyzer.vercel.app/
+* 后端接口地址：https://cross-border-phone-holder-api.vercel.app/
+* 后端健康检查：https://cross-border-phone-holder-api.vercel.app/api/health
 * GitHub 仓库地址：待补充
 
 ---
@@ -37,12 +38,16 @@
 
 * Node.js
 * Express
-* JSON 文件模拟数据存储
+* Vercel Serverless Functions
+* Supabase PostgreSQL
+* JSON 文件模拟商品数据
 
 ### 当前数据来源
 
 * `server/data/products.json`
-* `server/data/favorites.json`
+* `Supabase PostgreSQL favorites` 表
+
+当前版本中，商品数据仍然来自 `server/data/products.json`，候选池收藏数据已经迁移到 Supabase PostgreSQL。前端通过浏览器本地生成的匿名 `client_id` 区分不同访问者，后端通过请求头 `x-client-id` 读写对应收藏记录。
 
 ### 后续可扩展方向
 
@@ -93,7 +98,8 @@
 
 ### 候选池
 
-* 使用 `server/data/favorites.json` 保存候选商品 id。
+* 使用 Supabase PostgreSQL `favorites` 表保存候选商品。
+* 使用匿名 `client_id` 区分不同浏览器访问者。
 * 支持获取候选池商品。
 * 支持添加商品到候选池。
 * 支持从候选池取消收藏。
@@ -154,9 +160,21 @@
 
 返回候选池商品列表。
 
+需要请求头：
+
+```txt
+x-client-id: 当前浏览器匿名 client_id
+```
+
 ### `POST /api/favorites`
 
 添加商品到候选池。
+
+需要请求头：
+
+```txt
+x-client-id: 当前浏览器匿名 client_id
+```
 
 请求体示例：
 
@@ -169,6 +187,12 @@
 ### `DELETE /api/favorites/:id`
 
 根据商品 id 从候选池删除商品。
+
+需要请求头：
+
+```txt
+x-client-id: 当前浏览器匿名 client_id
+```
 
 ---
 
@@ -285,6 +309,8 @@ http://localhost:5173
 
 ## 环境变量说明
 
+### 前端环境变量
+
 当前本地开发环境默认使用：
 
 ```txt
@@ -298,6 +324,78 @@ VITE_API_BASE_URL=https://your-backend-url
 ```
 
 这样可以避免前端代码写死 `localhost`，方便本地开发和线上部署切换。
+
+### 后端环境变量
+
+后端本地开发使用 `server/.env`，该文件已被 `.gitignore` 忽略，不能提交到 GitHub。
+
+```txt
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_server_only_secret_key
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` 只能配置在后端环境变量中，不能写入前端代码，也不能使用 `VITE_` 前缀暴露给浏览器。
+
+---
+
+## 线上部署说明
+
+当前项目采用两个 Vercel 项目分开部署：
+
+* 前端：Vite React 静态站点。
+* 后端：Express 通过 Vercel Serverless Function 运行。
+
+### 后端 Vercel 项目
+
+```txt
+Root Directory: server
+Framework Preset: Other
+Install Command: npm install
+Build Command: 留空
+Output Directory: 留空
+```
+
+后端环境变量：
+
+```txt
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_server_only_secret_key
+```
+
+后端入口结构：
+
+* `server/app.js`：创建 Express app，注册中间件和路由，并 `export default app`。
+* `server/index.js`：本地开发入口，负责 `app.listen(...)`。
+* `server/api/index.js`：Vercel Serverless 入口，导出同一个 Express app。
+* `server/vercel.json`：将请求 rewrite 到 `/api`，由 Express app 统一处理。
+
+### 前端 Vercel 项目
+
+```txt
+Root Directory: client
+Framework Preset: Vite
+Install Command: npm install
+Build Command: npm run build
+Output Directory: dist
+```
+
+前端环境变量：
+
+```txt
+VITE_API_BASE_URL=https://your-backend-project.vercel.app
+```
+
+### 线上接口检查
+
+```txt
+https://cross-border-phone-holder-api.vercel.app/api/health
+https://cross-border-phone-holder-api.vercel.app/api/products
+https://cross-border-phone-holder-api.vercel.app/api/products/1
+https://cross-border-phone-holder-api.vercel.app/api/dashboard
+https://cross-border-phone-holder-api.vercel.app/api/favorites
+```
+
+`/api/favorites` 需要 `x-client-id` 请求头，推荐通过前端页面的收藏和取消收藏流程验证，同时在 Supabase Table Editor 中确认 `favorites` 表记录新增和删除。
 
 ---
 
@@ -353,7 +451,8 @@ VITE_API_BASE_URL=https://your-backend-url
 * 使用 Recharts 实现利润率排行和类目分布图表。
 * 前端页面包含 Dashboard、Products、ProductDetail、Analysis、Favorites 等完整业务模块。
 * 后端接口结构清晰，支持商品列表、详情、Dashboard、候选池增删查。
-* 当前使用 JSON 文件模拟数据存储，后续可以平滑迁移到数据库。
+* 后端通过 Vercel Serverless 部署，前端通过 Vercel 静态站点部署，项目可通过公网访问。
+* 候选池收藏数据接入 Supabase PostgreSQL，商品数据仍保留 JSON mock 数据，便于演示和后续扩展。
 * 项目适合用于简历展示和面试讲解。
 
 ---
@@ -363,11 +462,11 @@ VITE_API_BASE_URL=https://your-backend-url
 当前版本是 mock 数据阶段的可展示版本：
 
 * 商品数据来自本地 JSON 文件。
-* 候选池数据来自本地 JSON 文件。
+* 候选池数据来自 Supabase PostgreSQL。
 * 商品图片字段已经预留，后续可补充本地 mock 图片或接入 1688 图片。
 * 当前还没有接入真实 Amazon API。
 * 当前还没有接入真实 1688 API。
-* 当前还没有接入数据库。
+* 当前还没有把商品数据迁移到数据库。
 * 当前还没有登录注册和用户权限系统。
 
 这些不是永久限制，而是当前版本的阶段性状态。
@@ -385,17 +484,16 @@ VITE_API_BASE_URL=https://your-backend-url
 * 补充商品图片，让页面更像正式作品。
 * 增加基础响应式适配。
 
-### 2. 部署上线
+### 2. 部署与运维优化
 
-* 前端部署到 Vercel。
-* 后端部署到 Render、Railway 或 Koyeb。
-* 前端通过环境变量请求线上后端。
-* 配置 CORS 和路由刷新支持。
-* 在 README 中补充在线演示地址。
+* 补充正式线上访问地址。
+* 补充项目截图和演示说明。
+* 关注 Vercel Hobby 用量，避免无意义高频访问。
+* 根据需要补充错误日志排查和部署故障说明。
 
-### 3. 数据库迁移
+### 3. 数据存储增强
 
-* 将 `products.json` 和 `favorites.json` 迁移到数据库。
+* 将 `products.json` 商品数据迁移到数据库。
 * 可选方案包括 SQLite、MySQL、PostgreSQL、MongoDB。
 * 可以使用 Prisma 等工具进行数据建模。
 * 尽量保持现有 API 行为不变，降低前端改动成本。

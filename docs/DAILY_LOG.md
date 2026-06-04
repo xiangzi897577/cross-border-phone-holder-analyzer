@@ -2159,3 +2159,176 @@ const currentFilePath = fileURLToPath(import.meta.url)
 
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 34 记录
+
+## Day 36 - 2026-06-04：正式部署上线
+
+### 今日目标
+- 完成前后端正式部署，让项目可以通过公网链接访问。
+- 前端部署到 Vercel。
+- 后端从原计划 Render 调整为 Vercel Serverless Express API。
+- 保持最小改动，不新增业务功能，不改 UI，不接真实 Amazon / 1688 API，不重构页面。
+
+### 今日完成内容
+- 完成部署前最终检查：
+  - 前端 `npm run build` 通过。
+  - 后端 `npm start` 可启动。
+  - 前端 API 基地址继续使用 `VITE_API_BASE_URL || http://localhost:3000`。
+  - 后端 CORS 继续使用 `app.use(cors())`，支持前端跨域请求后端。
+  - `client/vercel.json` 保留 React Router 页面刷新 fallback。
+- 尝试使用 Render Free 部署后端，但当前 Render 账号创建服务时要求绑定银行卡。
+- 决定改为 Vercel Serverless 后端部署方案，避免 Render 绑卡，并提升面试链接稳定性。
+- 对 Express 后端做最小 Vercel Serverless 适配：
+  - `server/app.js` 只负责创建 Express app、注册中间件和路由，并 `export default app`。
+  - `server/index.js` 作为本地开发入口，负责 `app.listen(process.env.PORT || 3000)`。
+  - `server/api/index.js` 作为 Vercel Serverless 入口，导入并导出同一个 Express app。
+  - `server/vercel.json` 使用 rewrite，把请求交给 `/api` 入口处理。
+- 检查并确认 Supabase 收藏功能仍然保留：
+  - 候选池收藏数据使用 Supabase PostgreSQL `favorites` 表。
+  - 前端继续通过 `x-client-id` 请求头传递匿名 `client_id`。
+  - 后端继续从 `req.headers['x-client-id']` 读取 `client_id`。
+  - `SUPABASE_SERVICE_ROLE_KEY` 只放后端环境变量，不写入前端。
+- 后端 Vercel 项目部署成功。
+- 前端 Vercel 项目部署成功。
+- 用户确认前端公网链接可以正常发给别人打开。
+- 了解并检查 Vercel Hobby Usage：
+  - Usage 页面默认展示当前账号 / workspace 下所有项目最近 30 天用量。
+  - 当前用量远低于 Hobby 限额，适合简历项目正常演示。
+
+### 修改了哪些文件
+- `server/app.js`
+- `server/index.js`
+- `server/api/index.js`
+- `server/vercel.json`
+- `server/package.json`
+- `README.md`
+- `docs/DAILY_LOG.md`
+
+### 每个文件修改了什么
+- `server/app.js`：
+  - 去掉直接运行的 `app.listen(...)`。
+  - 保留旧 `app.listen(...)` 代码为注释，方便学习对比。
+  - 新增 `export default app`，让本地和 Vercel 共用同一个 Express app。
+- `server/index.js`：
+  - 新增本地开发启动入口。
+  - 使用 `import 'dotenv/config'` 读取本地 `server/.env`。
+  - 通过 `app.listen(process.env.PORT || 3000)` 启动本地后端。
+- `server/api/index.js`：
+  - 新增 Vercel Serverless 入口。
+  - 导入 `../app.js` 并 `export default app`。
+- `server/vercel.json`：
+  - 新增 Vercel rewrite 配置：
+    - `source: /(.*)`
+    - `destination: /api`
+  - 采用 Vercel Express 推荐写法，确保 `/api/health`、`/api/products`、`/api/dashboard`、`/api/favorites` 等请求进入 Express app。
+- `server/package.json`：
+  - 将 `main` 调整为 `index.js`。
+  - 将 `start` 调整为 `node index.js`。
+  - 确认运行时依赖包含 `express`、`cors`、`dotenv`、`@supabase/supabase-js`。
+- `README.md`：
+  - 同步当前部署架构：前端 Vercel，后端 Vercel Serverless。
+  - 更新候选池数据说明：favorites 已迁移到 Supabase PostgreSQL。
+  - 补充 Vercel 后端和前端部署配置。
+  - 补充 Supabase 环境变量安全说明。
+- `docs/DAILY_LOG.md`：
+  - 记录 Day 36 正式部署过程、问题、解决方式和关键知识点。
+
+### 后端 Vercel 部署配置
+- Root Directory：`server`
+- Framework Preset：`Other`
+- Install Command：`npm install`
+- Build Command：留空；如果 Vercel 要求填写，可填 `echo "no build step"`
+- Output Directory：留空
+- Environment Variables：
+  - `SUPABASE_URL=https://xxxx.supabase.co`
+  - `SUPABASE_SERVICE_ROLE_KEY=sb_secret_xxx`
+
+### 前端 Vercel 部署配置
+- Root Directory：`client`
+- Framework Preset：`Vite`
+- Install Command：`npm install`
+- Build Command：`npm run build`
+- Output Directory：`dist`
+- Environment Variables：
+  - `VITE_API_BASE_URL=https://后端项目名.vercel.app`
+
+### 线上接口测试结果
+- 后端 Vercel 项目已部署成功。
+- 后端线上地址：
+  - `https://cross-border-phone-holder-api.vercel.app/`
+- 后端健康检查地址：
+  - `https://cross-border-phone-holder-api.vercel.app/api/health`
+- 需要重点检查以下接口：
+  - `https://cross-border-phone-holder-api.vercel.app/api/health`
+  - `https://cross-border-phone-holder-api.vercel.app/api/products`
+  - `https://cross-border-phone-holder-api.vercel.app/api/products/1`
+  - `https://cross-border-phone-holder-api.vercel.app/api/dashboard`
+  - `https://cross-border-phone-holder-api.vercel.app/api/favorites`
+- `/api/favorites` 需要 `x-client-id` 请求头，推荐通过前端页面收藏流程验证。
+
+### 线上页面测试结果
+- 前端 Vercel 项目已部署成功。
+- 用户确认前端公网地址可以正常发给别人打开。
+- 前端线上地址：
+  - `https://cross-border-phone-holder-analyzer.vercel.app/`
+- 需要继续回归测试：
+  - `/`
+  - `/products`
+  - `/products/1`
+  - `/favorites`
+  - `/analysis`
+- 核心功能检查：
+  - Dashboard 数据加载。
+  - 商品列表加载。
+  - 商品详情打开。
+  - 搜索、类目筛选、利润率筛选、排序。
+  - 加入候选池。
+  - 候选池显示收藏商品。
+  - 取消收藏。
+  - React Router 页面刷新不 404。
+
+### Supabase 验证方式
+- 打开线上前端页面。
+- 点击某个商品的“加入候选池”。
+- 打开 Supabase Table Editor。
+- 检查 `favorites` 表是否新增：
+  - `client_id`
+  - `product_id`
+- 在线上前端取消收藏。
+- 回到 Supabase 确认对应记录被删除。
+
+### 遇到的问题和解决方式
+- 问题 1：Render Free 创建服务时要求 Add Card。
+- 解决方式：不绑定银行卡，放弃 Render 路线，改为 Vercel Serverless 部署 Express 后端。
+- 问题 2：Express 原本在 `app.js` 中直接 `app.listen(...)`，不适合 Vercel Serverless。
+- 解决方式：拆分为 `app.js`、`index.js`、`api/index.js` 三层入口，接口逻辑仍然只保留一份。
+- 问题 3：`server/vercel.json` 中 rewrite destination 写 `/api/index` 存在命中风险。
+- 解决方式：改为 Vercel Express 推荐写法 `destination: /api`。
+- 问题 4：Supabase service role key 不能暴露给前端。
+- 解决方式：只在后端 Vercel 项目配置 `SUPABASE_SERVICE_ROLE_KEY`，前端只配置 `VITE_API_BASE_URL`。
+- 问题 5：担心 Vercel Hobby 额度被耗尽。
+- 解决方式：查看 Usage 页面，理解当前展示的是账号 / workspace 最近 30 天用量；正常简历演示访问量远低于限额，不建议公开到大流量渠道或做压力测试。
+
+### 当前线上数据存储说明
+- 商品数据：
+  - 仍然来自 `server/data/products.json`。
+  - 适合当前 mock 数据展示阶段。
+- 候选池数据：
+  - 已迁移到 Supabase PostgreSQL `favorites` 表。
+  - 通过匿名 `client_id` 区分不同浏览器访问者。
+- 后续如果要更完整生产化，可以继续将 `products.json` 迁移到数据库。
+
+### 今日重点理解知识点
+- Vercel 可以同时部署静态前端和 Serverless 后端，但本项目为了清晰，前端和后端拆成两个 Vercel 项目。
+- `server/app.js` 是 Express 应用主体，`server/index.js` 是本地启动器，`server/api/index.js` 是 Vercel Serverless 启动器。
+- `VITE_API_BASE_URL` 是前端连接线上后端的关键环境变量。
+- `SUPABASE_SERVICE_ROLE_KEY` 是后端密钥，不能加 `VITE_` 前缀，不能放进前端项目。
+- Vercel Hobby Usage 默认可以查看所有项目最近 30 天用量，也可以切换单项目查看。
+
+### 明日计划
+- 进入 Day 37，整理代码结构与 API 封装。
+- 回归检查线上核心页面和收藏流程。
+- 将实际前端地址、后端地址和健康检查地址补充到 README。
+- 准备项目截图和 README 展示材料。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 36 记录。
