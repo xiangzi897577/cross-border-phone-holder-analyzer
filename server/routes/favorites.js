@@ -1,45 +1,17 @@
 import express from 'express'
-import path from 'path'
-import { fileURLToPath } from 'url'
 import { supabase } from '../lib/supabase.js'
-import { readJsonFile } from '../utils/fileStore.js'
+import { parsePositiveInteger } from '../utils/number.js'
 import { enrichProductMetrics } from '../utils/productMetrics.js'
+import { readProducts } from '../utils/productStore.js'
+import { sendError, sendSuccess } from '../utils/response.js'
 
 const router = express.Router()
-
-const currentFilePath = fileURLToPath(import.meta.url)
-const currentDirPath = path.dirname(currentFilePath)
-const productsFilePath = path.join(currentDirPath, '..', 'data', 'products.json')
 
 function getClientId(req) {
   const rawClientId = req.headers['x-client-id']
   const clientId = Array.isArray(rawClientId) ? rawClientId[0] : rawClientId
 
   return typeof clientId === 'string' ? clientId.trim() : ''
-}
-
-function parseProductId(productId) {
-  if (productId === undefined || productId === null || productId === '') {
-    return null
-  }
-
-  const numberValue = Number(productId)
-
-  if (!Number.isInteger(numberValue) || numberValue <= 0) {
-    return null
-  }
-
-  return numberValue
-}
-
-async function readProducts() {
-  const products = await readJsonFile(productsFilePath)
-
-  if (!Array.isArray(products)) {
-    throw new Error('Products data format is invalid. Expected an array.')
-  }
-
-  return products
 }
 
 function isUniqueConstraintError(error) {
@@ -51,10 +23,7 @@ router.get('/', async (req, res) => {
     const clientId = getClientId(req)
 
     if (!clientId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Missing client id',
-      })
+      return sendError(res, 400, 'Missing client id')
     }
 
     const products = await readProducts()
@@ -65,11 +34,7 @@ router.get('/', async (req, res) => {
       .order('created_at', { ascending: false })
 
     if (error) {
-      return res.status(500).json({
-        status: 'error',
-        message: 'Failed to query favorites from Supabase.',
-        error: error.message,
-      })
+      return sendError(res, 500, 'Failed to query favorites from Supabase.', error)
     }
 
     // Create a map of products for efficient lookup  
@@ -84,43 +49,34 @@ router.get('/', async (req, res) => {
       .filter(Boolean)
       .map((product) => enrichProductMetrics(product))
 
-    return res.json(favoriteProducts)
+    return sendSuccess(res, favoriteProducts)
   } catch (error) {
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to read favorites data.',
-      error: error.message,
-    })
+    return sendError(res, 500, 'Failed to read favorites data.', error)
   }
 })
 
 router.post('/', async (req, res) => {
   try {
     const clientId = getClientId(req)
-    const productId = parseProductId(req.body?.productId)
+    const productId = parsePositiveInteger(req.body?.productId)
 
     if (!clientId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Missing client id',
-      })
+      return sendError(res, 400, 'Missing client id')
     }
 
     if (productId === null) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'productId is invalid. Please provide a valid positive integer productId.',
-      })
+      return sendError(
+        res,
+        400,
+        'productId is invalid. Please provide a valid positive integer productId.',
+      )
     }
 
     const products = await readProducts()
     const targetProduct = products.find((product) => product.id === productId)
 
     if (!targetProduct) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Product not found. Cannot add it to favorites.',
-      })
+      return sendError(res, 404, 'Product not found. Cannot add it to favorites.')
     }
 
     const { error } = await supabase
@@ -131,52 +87,40 @@ router.post('/', async (req, res) => {
       })
 
     if (isUniqueConstraintError(error)) {
-      return res.status(409).json({
-        status: 'error',
-        message: 'Product already in favorites',
+      return sendError(res, 409, 'Product already in favorites', null, {
         product: enrichProductMetrics(targetProduct),
       })
     }
 
     if (error) {
-      return res.status(500).json({
-        status: 'error',
-        message: 'Failed to add favorite product in Supabase.',
-        error: error.message,
-      })
+      return sendError(res, 500, 'Failed to add favorite product in Supabase.', error)
     }
 
-    return res.status(201).json({
+    return sendSuccess(res, {
       status: 'success',
       message: '商品已成功添加到候选池。',
       product: enrichProductMetrics(targetProduct),
-    })
+    }, 201)
   } catch (error) {
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to add favorite product.',
-      error: error.message,
-    })
+    return sendError(res, 500, 'Failed to add favorite product.', error)
   }
 })
 
 router.delete('/:id', async (req, res) => {
   try {
     const clientId = getClientId(req)
-    const productId = parseProductId(req.params.id)
+    const productId = parsePositiveInteger(req.params.id)
 
     if (!clientId) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Missing client id',
-      })
+      return sendError(res, 400, 'Missing client id')
     }
 
     if (productId === null) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'productId is invalid. Please provide a valid positive integer productId.',
-      })
+      return sendError(
+        res,
+        400,
+        'productId is invalid. Please provide a valid positive integer productId.',
+      )
     }
 
     const { data: deletedFavorites, error } = await supabase
@@ -187,31 +131,20 @@ router.delete('/:id', async (req, res) => {
       .select('product_id')
 
     if (error) {
-      return res.status(500).json({
-        status: 'error',
-        message: 'Failed to delete favorite product from Supabase.',
-        error: error.message,
-      })
+      return sendError(res, 500, 'Failed to delete favorite product from Supabase.', error)
     }
 
     if (!Array.isArray(deletedFavorites) || deletedFavorites.length === 0) {
-      return res.status(404).json({
-        status: 'error',
-        message: '该商品不在候选池中，无法删除。',
-      })
+      return sendError(res, 404, '该商品不在候选池中，无法删除。')
     }
 
-    return res.json({
+    return sendSuccess(res, {
       status: 'success',
       message: '商品已成功从候选池中删除。',
       productId,
     })
   } catch (error) {
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to delete favorite product.',
-      error: error.message,
-    })
+    return sendError(res, 500, 'Failed to delete favorite product.', error)
   }
 })
 

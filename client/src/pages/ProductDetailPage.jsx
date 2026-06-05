@@ -1,55 +1,24 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import ErrorState from '../components/common/ErrorState.jsx'
+import LoadingState from '../components/common/LoadingState.jsx'
 import { addFavorite, getProductById } from '../services/api'
-
-const DEFAULT_PRODUCT_IMAGE = '/images/products/placeholder.png'
-
-const levelTextMap = {
-  low: '低',
-  medium: '中',
-  high: '高',
-  unknown: '未知',
-}
-
-function formatMoney(value, symbol) {
-  if (typeof value !== 'number') {
-    return '-'
-  }
-
-  return `${symbol}${value.toFixed(2)}`
-}
-
-function formatPercent(value) {
-  if (typeof value !== 'number') {
-    return '0.0%'
-  }
-
-  return `${value.toFixed(1)}%`
-}
-
-function formatNumber(value, digits = 0) {
-  if (typeof value !== 'number') {
-    return digits === 0 ? '0' : (0).toFixed(digits)
-  }
-
-  return value.toFixed(digits)
-}
-
-function formatText(value) {
-  if (typeof value !== 'string' || value.trim() === '') {
-    return '暂无'
-  }
-
-  return value
-}
-
-function formatLevel(value) {
-  if (typeof value !== 'string' || value.trim() === '') {
-    return '暂无'
-  }
-
-  return levelTextMap[value] || value
-}
+import {
+  formatMoney,
+  formatNumber,
+  formatPercent,
+  formatRating,
+  formatScore,
+  formatText,
+} from '../utils/format'
+import {
+  getProductCategory,
+  getProductImage,
+  getProductName,
+  getProductTags,
+  getRiskFactors,
+  getRiskLevelText,
+} from '../utils/product'
 
 function DecisionMetric({ label, value, tone = '' }) {
   const metricClassName = tone
@@ -139,12 +108,9 @@ function ProductDetailPage() {
     }
   }
 
-  const productImage =
-    typeof product?.image === 'string' && product.image.trim() !== '' && !imageLoadError
-      ? product.image
-      : DEFAULT_PRODUCT_IMAGE
-  const tags = Array.isArray(product?.tags) ? product.tags : []
-  const riskFactors = Array.isArray(product?.riskFactors) ? product.riskFactors : []
+  const productImage = getProductImage(product, imageLoadError)
+  const tags = getProductTags(product)
+  const riskFactors = getRiskFactors(product)
   const currentProductId = product?.id ?? id
 
   return (
@@ -153,11 +119,11 @@ function ProductDetailPage() {
         返回商品列表
       </Link>
 
-      {loading ? <p className="page-note page-note--loading">商品详情加载中...</p> : null}
+      {loading ? <LoadingState>商品详情加载中...</LoadingState> : null}
 
       {!loading && error ? (
         <div className="detail-page__error">
-          <p className="page-note page-note--error">请求失败：{error}</p>
+          <ErrorState>{error}</ErrorState>
           <Link to="/products" className="detail-page__back-link">
             返回商品列表
           </Link>
@@ -171,14 +137,14 @@ function ProductDetailPage() {
               <img
                 className="detail-page__image"
                 src={productImage}
-                alt={formatText(product.productName)}
+                alt={getProductName(product)}
                 onError={() => setImageLoadError(true)}
               />
             </div>
 
             <div className="detail-page__summary">
-              <p className="detail-page__category">{formatText(product.category)}</p>
-              <h3 className="detail-page__product-name">{formatText(product.productName)}</h3>
+              <p className="detail-page__category">{getProductCategory(product)}</p>
+              <h3 className="detail-page__product-name">{getProductName(product)}</h3>
               <p className="detail-page__summary-text">
                 商品编号 <strong>{currentProductId}</strong>。结合售价、成本、物流、竞争和风险标签，判断该款是否适合进入后续选品跟进。
               </p>
@@ -186,7 +152,7 @@ function ProductDetailPage() {
               <div className="detail-page__decision-grid">
                 <DecisionMetric
                   label="推荐评分"
-                  value={formatNumber(product.recommendationScore)}
+                  value={formatScore(product.recommendationScore)}
                   tone="score"
                 />
                 <DecisionMetric
@@ -201,12 +167,12 @@ function ProductDetailPage() {
                 />
                 <DecisionMetric
                   label="竞争指数"
-                  value={formatNumber(product.competitionScore)}
+                  value={formatScore(product.competitionScore)}
                   tone="competition"
                 />
                 <DecisionMetric
                   label="风险等级"
-                  value={formatLevel(product.riskLevel)}
+                  value={getRiskLevelText(product.riskLevel, { short: true, emptyText: '暂无' })}
                   tone="risk"
                 />
               </div>
@@ -255,8 +221,8 @@ function ProductDetailPage() {
             <section className="detail-page__section">
               <h3 className="detail-page__section-title">基础信息</h3>
               <dl className="detail-page__grid">
-                <DetailItem label="商品名称" value={formatText(product.productName)} />
-                <DetailItem label="商品类型" value={formatText(product.category)} />
+                <DetailItem label="商品名称" value={getProductName(product)} />
+                <DetailItem label="商品类型" value={getProductCategory(product)} />
                 <DetailItem label="材质" value={formatText(product.material)} />
                 <DetailItem label="供应商" value={formatText(product.supplier)} />
                 <DetailItem
@@ -290,18 +256,25 @@ function ProductDetailPage() {
                   label="预估月销量"
                   value={formatNumber(product.estimatedMonthlySales)}
                 />
-                <DetailItem label="评分" value={formatNumber(product.rating, 1)} />
+                <DetailItem label="评分" value={formatRating(product.rating)} />
                 <DetailItem label="评论数" value={formatNumber(product.reviewCount)} />
-                <DetailItem label="竞争指数" value={formatNumber(product.competitionScore)} tone="competition" />
-                <DetailItem label="竞争等级" value={formatLevel(product.competitionLevel)} />
-                <DetailItem label="推荐评分" value={formatNumber(product.recommendationScore)} />
+                <DetailItem label="竞争指数" value={formatScore(product.competitionScore)} tone="competition" />
+                <DetailItem
+                  label="竞争等级"
+                  value={getRiskLevelText(product.competitionLevel, { short: true, emptyText: '暂无' })}
+                />
+                <DetailItem label="推荐评分" value={formatScore(product.recommendationScore)} />
               </dl>
             </section>
 
             <section className="detail-page__section">
               <h3 className="detail-page__section-title">风险分析</h3>
               <dl className="detail-page__grid">
-                <DetailItem label="风险等级" value={formatLevel(product.riskLevel)} tone="risk" />
+                <DetailItem
+                  label="风险等级"
+                  value={getRiskLevelText(product.riskLevel, { short: true, emptyText: '暂无' })}
+                  tone="risk"
+                />
               </dl>
               <div className="detail-page__list-block">
                 <h4 className="detail-page__list-title">风险因素</h4>

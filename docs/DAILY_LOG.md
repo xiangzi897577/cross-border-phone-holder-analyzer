@@ -2332,3 +2332,163 @@ const currentFilePath = fileURLToPath(import.meta.url)
 
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 36 记录。
+
+## Day 37 - 2026-06-05：代码结构整理与 API 封装
+
+### 今日目标
+- 做工程化整理，让前后端代码结构更清晰。
+- 减少重复格式化、数字判断、商品字段兜底、筛选排序和错误响应逻辑。
+- 保持现有页面主功能、接口路径、部署方式和 Supabase 收藏池稳定。
+- 为后续 products 迁移 Supabase、智谱 AI、AI 选品助手和轻量级 RAG 打基础。
+
+### 今日完成内容
+- 新增前端 `utils` 工具目录，统一处理数字、格式化和商品字段兜底。
+- 新增前端 common 状态组件，统一 loading、error、empty 展示。
+- 替换商品卡片、商品详情、候选池、Dashboard、Analysis、图表组件中的重复格式化逻辑。
+- 整理 `client/src/services/api.js`，统一 base URL 拼接、headers 构造、JSON/text 解析和错误处理。
+- 后端新增数字、响应、商品筛选、商品排序、商品读取工具。
+- 后端 `productMetrics.js` 改为复用统一数字工具，但利润率、推荐评分和风险指标计算逻辑保持不变。
+- 后端 `products`、`dashboard`、`favorites` 路由改为复用 utils，减少 route 文件里的重复逻辑。
+- 收藏池继续使用 Supabase `favorites` 表，没有改回 `favorites.json`。
+- 商品数据继续来自 `server/data/products.json`，没有提前迁移 products 到 Supabase。
+
+### 修改了哪些文件
+- `client/src/utils/number.js`
+- `client/src/utils/format.js`
+- `client/src/utils/product.js`
+- `client/src/components/common/LoadingState.jsx`
+- `client/src/components/common/ErrorState.jsx`
+- `client/src/components/common/EmptyState.jsx`
+- `client/src/services/api.js`
+- `client/src/components/ProductCard.jsx`
+- `client/src/components/ProfitRankingChart.jsx`
+- `client/src/components/CategoryPieChart.jsx`
+- `client/src/pages/ProductsPage.jsx`
+- `client/src/pages/DashboardPage.jsx`
+- `client/src/pages/AnalysisPage.jsx`
+- `client/src/pages/FavoritesPage.jsx`
+- `client/src/pages/ProductDetailPage.jsx`
+- `server/utils/number.js`
+- `server/utils/response.js`
+- `server/utils/productFilters.js`
+- `server/utils/productSort.js`
+- `server/utils/productStore.js`
+- `server/utils/productMetrics.js`
+- `server/routes/products.js`
+- `server/routes/dashboard.js`
+- `server/routes/favorites.js`
+- `docs/DAILY_LOG.md`
+
+### 前端整理结果
+- `number.js` 统一提供：
+  - `toNumberOrNull`
+  - `safeNumber`
+  - `clamp`
+  - `roundTo`
+- `format.js` 统一提供：
+  - `formatMoney`
+  - `formatPercent`
+  - `formatNumber`
+  - `formatRating`
+  - `formatScore`
+  - `formatText`
+- `product.js` 统一提供：
+  - 默认商品图片
+  - 商品名称兜底
+  - 商品类目兜底
+  - risk level 文案
+  - tags / riskFactors 数组兜底
+  - `getProfitRatePercent`，兼容 `profitRatePercent` 和 `profitRate`
+- common 状态组件复用原来的 `page-note` 样式，没有改变 UI 风格。
+- 页面里的 `0`、`0%`、`0.0`、物流成本 0、评分 0 等有效值不会被误判为“暂无”。
+
+### API 封装整理结果
+- 前端接口函数名保持不变：
+  - `getProducts`
+  - `getProductById`
+  - `getDashboard`
+  - `getFavorites`
+  - `addFavorite`
+  - `removeFavorite`
+- 接口路径保持不变：
+  - `GET /api/products`
+  - `GET /api/products/:id`
+  - `GET /api/dashboard`
+  - `GET /api/favorites`
+  - `POST /api/favorites`
+  - `DELETE /api/favorites/:id`
+- 前端仍然通过 `VITE_API_BASE_URL` 配置线上后端地址。
+- `api.js` 现在统一处理：
+  - base URL 尾部斜杠
+  - 请求路径拼接
+  - `x-client-id`
+  - `Content-Type`
+  - JSON 解析错误
+  - HTTP 非 2xx 错误
+  - `success: false`
+  - `status: "error"`
+- `POST /api/favorites` 当前成功返回 `status: "success"`，不会被误判为失败。
+
+### 后端整理结果
+- `server/utils/number.js` 统一处理：
+  - `getValidNumber`
+  - `roundTo`
+  - `clamp`
+  - `parsePositiveInteger`
+- `server/utils/response.js` 统一处理：
+  - `sendSuccess`
+  - `sendError`
+- `server/utils/productFilters.js` 统一处理：
+  - 关键词搜索
+  - 类目筛选
+  - 最低利润率筛选
+- `server/utils/productSort.js` 统一处理商品排序。
+- `server/utils/productStore.js` 统一读取 `server/data/products.json`。
+- `products.js` 不再堆筛选和排序细节。
+- `dashboard.js` 不再重复读取 products 和重复 round 逻辑。
+- `favorites.js` 保留 Supabase 收藏池逻辑，只整理 id 解析、商品读取和响应返回。
+
+### 保持不变的内容
+- 没有新增 UI 组件库。
+- 没有引入 TypeScript。
+- 没有接入 AI。
+- 没有迁移 products 到 Supabase。
+- 没有删除 `products.json`。
+- 没有改变页面主功能。
+- 没有改变线上部署方式。
+- 没有改变 Supabase 表名、字段名、`x-client-id` 请求头或查询条件。
+
+### 本地验证结果
+- 前端构建：
+  - `cd client`
+  - `npm run build`
+  - 结果：通过
+- 前端 lint：
+  - `cd client`
+  - `npm run lint`
+  - 结果：通过
+- 后端语法检查：
+  - 对 `server` 下所有 `.js` 文件执行 `node --check`
+  - 结果：通过
+- 构建时仍有 Vite chunk 体积提示，主要来自现有依赖体积，不影响本次构建成功。
+
+### 发现但暂未处理的无用文件
+- `client/src/components/BasicChart.jsx` 当前未被引用，暂未删除。
+- `client/src/assets/react.svg`、`vite.svg`、`hero.png` 当前未发现引用，暂未删除。
+- `server/config/env.js` 当前未发现引用，暂未删除。
+- `server/app.js` health 文案里的 `gogogo!` 像临时文案，暂未修改。
+
+### 今日重点理解知识点
+- `children` 是 React 组件标签中间传入的内容，例如 `<ErrorState>错误信息</ErrorState>` 中的“错误信息”。
+- 公共格式化函数可以减少页面重复代码，也能统一处理 `0` 值、空值和异常值。
+- API 封装层应该负责请求地址、headers、解析和错误处理，页面只关心业务数据。
+- 后端 routes 应尽量负责“接请求、调工具、返回结果”，筛选、排序、计算和响应格式可以抽到 utils。
+- 做结构整理时，最重要的是保持行为稳定，而不是为了重构而重写功能。
+
+### 明日计划
+- 进入 Day 38，准备 products 从 JSON 迁移到 Supabase 的方案或实现。
+- 优先保持现有前端 API 调用方式不变。
+- 重点考虑 products 表字段映射、数据导入、读取层替换和线上环境变量安全。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 37 记录。

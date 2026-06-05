@@ -1,17 +1,5 @@
 import { BUSINESS_CONFIG } from '../config/businessConfig.js'
-
-function getValidNumber(value) {
-  const numberValue = Number(value)
-  return Number.isFinite(numberValue) ? numberValue : null
-}
-
-function roundTo(value, digits) {
-  return Number(value.toFixed(digits))
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max)
-}
+import { clamp, getValidNumber, roundTo } from './number.js'
 
 function calculateRevenueCNY(product) {
   const amazonPrice = getValidNumber(product?.amazonPrice) ?? 0//安全取值

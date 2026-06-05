@@ -1,4 +1,5 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { toNumberOrNull } from '../utils/number'
 
 const pieColors = ['#14b8a6', '#2563eb', '#f59e0b', '#ef4444', '#8b5cf6', '#22c55e']
 
@@ -8,9 +9,9 @@ function normalizeCategoryDistribution(categoryDistribution) {
       .map((item) => {
         const name = item?.name || item?.category
         const value = item?.value ?? item?.count
-        const numericValue = Number(value)
+        const numericValue = toNumberOrNull(value)
 
-        if (!name || !Number.isFinite(numericValue) || numericValue <= 0) {
+        if (!name || numericValue === null || numericValue <= 0) {
           return null
         }
 
@@ -25,9 +26,9 @@ function normalizeCategoryDistribution(categoryDistribution) {
   if (categoryDistribution && typeof categoryDistribution === 'object') {
     return Object.entries(categoryDistribution)
       .map(([name, value]) => {
-        const numericValue = Number(value)
+        const numericValue = toNumberOrNull(value)
 
-        if (!name || !Number.isFinite(numericValue) || numericValue <= 0) {
+        if (!name || numericValue === null || numericValue <= 0) {
           return null
         }
 

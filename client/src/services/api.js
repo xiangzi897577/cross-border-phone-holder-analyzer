@@ -1,8 +1,23 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+const API_BASE_URL = normalizeBaseUrl(RAW_API_BASE_URL)
 const BACKEND_CONNECTION_ERROR = `无法连接到后端服务，请确认 ${API_BASE_URL} 已启动或配置正确`
 const CLIENT_ID_STORAGE_KEY = 'phone_holder_analyzer_client_id'
 
 let memoryClientId = ''
+
+function normalizeBaseUrl(baseUrl) {
+  return String(baseUrl || '').replace(/\/+$/, '')
+}
+
+function buildApiUrl(path) {
+  const normalizedPath = String(path || '').startsWith('/') ? path : `/${path}`
+
+  if (!API_BASE_URL) {
+    return normalizedPath
+  }
+
+  return `${API_BASE_URL}${normalizedPath}`
+}
 
 function createClientId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -33,8 +48,20 @@ function getClientId() {
   return nextClientId
 }
 
-function withClientIdHeader(options = {}) {
+function createHeaders(options = {}, extraHeaders = {}) {
   const headers = new Headers(options.headers || {})
+
+  Object.entries(extraHeaders).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      headers.set(key, value)
+    }
+  })
+
+  return headers
+}
+
+function withClientIdHeader(options = {}) {
+  const headers = createHeaders(options)
   headers.set('x-client-id', getClientId())
 
   return {
@@ -48,15 +75,24 @@ function getRequestErrorMessage(status, errorMessages, data) {
     return errorMessages[status]
   }
 
-  if (errorMessages && typeof errorMessages.default === 'string') {
-    return errorMessages.default
-  }
-
   if (data && typeof data === 'object' && typeof data.message === 'string') {
     return data.message
   }
 
+  if (errorMessages && typeof errorMessages.default === 'string') {
+    return errorMessages.default
+  }
+
   return '请求失败'
+}
+
+function isErrorResponseData(data) {
+  return Boolean(
+    data &&
+    typeof data === 'object' &&
+    !Array.isArray(data) &&
+    (data.success === false || data.status === 'error'),
+  )
 }
 
 async function readResponseData(response) {
@@ -87,7 +123,7 @@ async function requestJson(path, errorMessages, options = {}) {
   let response
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, options)
+    response = await fetch(buildApiUrl(path), options)
   } catch (error) {
     if (error.name === 'AbortError') {
       throw error
@@ -99,6 +135,10 @@ async function requestJson(path, errorMessages, options = {}) {
   const data = await readResponseData(response)
 
   if (!response.ok) {
+    throw new Error(getRequestErrorMessage(response.status, errorMessages, data))
+  }
+
+  if (isErrorResponseData(data)) {
     throw new Error(getRequestErrorMessage(response.status, errorMessages, data))
   }
 
@@ -184,11 +224,9 @@ export async function addFavorite(productId, options = {}) {
     {
       ...options,
       method: 'POST',
-      headers: (() => {
-        const headers = new Headers(withClientIdHeader(options).headers)
-        headers.set('Content-Type', 'application/json')
-        return headers
-      })(),
+      headers: createHeaders(withClientIdHeader(options), {
+        'Content-Type': 'application/json',
+      }),
       body: JSON.stringify({ productId }),
     },
   )

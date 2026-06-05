@@ -1,47 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { addFavorite } from '../services/api'
-
-const DEFAULT_PRODUCT_IMAGE = '/images/products/placeholder.png'
-
-const riskLevelTextMap = {
-  low: '低风险',
-  medium: '中风险',
-  high: '高风险',
-  unknown: '风险未知',
-}
-
-function formatMoney(value, symbol) {
-  if (typeof value !== 'number') {
-    return '-'
-  }
-
-  return `${symbol}${value.toFixed(2)}`
-}
-
-function formatPercent(value) {
-  if (typeof value !== 'number') {
-    return '0.0%'
-  }
-
-  return `${value.toFixed(1)}%`
-}
-
-function formatNumber(value, digits = 0) {
-  if (typeof value !== 'number') {
-    return digits === 0 ? '0' : (0).toFixed(digits)
-  }
-
-  return value.toFixed(digits)
-}
-
-function getRiskLevelText(riskLevel) {
-  if (typeof riskLevel !== 'string' || riskLevel.trim() === '') {
-    return '风险未知'
-  }
-
-  return riskLevelTextMap[riskLevel] || riskLevel
-}
+import { formatMoney, formatPercent, formatRating, formatScore } from '../utils/format'
+import {
+  getProductCategory,
+  getProductImage,
+  getProductName,
+  getRiskLevelText,
+} from '../utils/product'
 
 function ProductCard({ product }) {
   const [imageLoadError, setImageLoadError] = useState(false)
@@ -49,11 +15,8 @@ function ProductCard({ product }) {
   const [favoriteMessage, setFavoriteMessage] = useState('')
   const [favoriteMessageType, setFavoriteMessageType] = useState('')
   const hasProductId = product?.id !== undefined && product?.id !== null && product?.id !== ''
-  const productImage =
-    typeof product?.image === 'string' && product.image.trim() !== '' && !imageLoadError
-      ? product.image
-      : DEFAULT_PRODUCT_IMAGE
-  const productName = product?.productName || '暂无'
+  const productImage = getProductImage(product, imageLoadError)
+  const productName = getProductName(product)
   const riskLevel = product?.riskLevel || 'unknown'
   const riskBadgeClassName = `product-card__risk-badge product-card__risk-badge--${riskLevel}`
 
@@ -92,7 +55,7 @@ function ProductCard({ product }) {
       <div className="product-card__body">
         <div>
           <div className="product-card__tag-row">
-            <p className="product-card__category">{product?.category || '暂无'}</p>
+            <p className="product-card__category">{getProductCategory(product)}</p>
             <span className={riskBadgeClassName}>{getRiskLevelText(riskLevel)}</span>
           </div>
           <h3 className="product-card__title">{productName}</h3>
@@ -123,21 +86,21 @@ function ProductCard({ product }) {
           <div className="product-card__metric product-card__metric--competition">
             <span className="product-card__metric-label">竞争指数</span>
             <strong className="product-card__metric-value">
-              {formatNumber(product?.competitionScore)}
+              {formatScore(product?.competitionScore)}
             </strong>
           </div>
 
           <div className="product-card__metric">
             <span className="product-card__metric-label">评分</span>
             <strong className="product-card__metric-value">
-              {formatNumber(product?.rating, 1)}
+              {formatRating(product?.rating)}
             </strong>
           </div>
 
           <div className="product-card__metric product-card__metric--score">
             <span className="product-card__metric-label">推荐评分</span>
             <strong className="product-card__metric-value">
-              {formatNumber(product?.recommendationScore)}
+              {formatScore(product?.recommendationScore)}
             </strong>
           </div>
         </div>

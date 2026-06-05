@@ -1,32 +1,11 @@
 import express from 'express'
-import { readFile } from 'fs/promises'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import { roundTo } from '../utils/number.js'
 import { enrichProductMetrics } from '../utils/productMetrics.js'
+import { sortProducts } from '../utils/productSort.js'
+import { INVALID_PRODUCTS_FORMAT_MESSAGE, readProducts } from '../utils/productStore.js'
+import { sendError, sendSuccess } from '../utils/response.js'
 
 const router = express.Router()
-
-const INVALID_PRODUCTS_FORMAT_MESSAGE =
-  'Products data format is invalid. Expected an array.'
-
-const currentFilePath = fileURLToPath(import.meta.url)
-const currentDirPath = path.dirname(currentFilePath)
-const productsFilePath = path.join(currentDirPath, '..', 'data', 'products.json')
-
-function roundTo(value, digits) {
-  return Number(value.toFixed(digits))
-}
-
-async function readProducts() {
-  const fileContent = await readFile(productsFilePath, 'utf-8')
-  const products = JSON.parse(fileContent)
-
-  if (!Array.isArray(products)) {
-    throw new Error(INVALID_PRODUCTS_FORMAT_MESSAGE)
-  }
-
-  return products
-}
 
 router.get('/', async (req, res) => {
   try {
@@ -53,8 +32,7 @@ router.get('/', async (req, res) => {
       return product.riskLevel === 'high'
     }).length
 
-    const topProfitProducts = [...enrichedProducts]
-      .sort((firstProduct, secondProduct) => secondProduct.profitRate - firstProduct.profitRate)
+    const topProfitProducts = sortProducts(enrichedProducts, 'profitRateDesc')
       .slice(0, 5)
       .map((product) => ({
         id: product.id,
@@ -98,7 +76,7 @@ router.get('/', async (req, res) => {
       return product.profitRate >= 0.3 && product.competitionScore < 50
     }).length
 
-    return res.json({
+    return sendSuccess(res, {
       totalProducts,
       averageProfitRate,
       averageProfitRatePercent,
@@ -111,17 +89,10 @@ router.get('/', async (req, res) => {
     })
   } catch (error) {
     if (error.message === INVALID_PRODUCTS_FORMAT_MESSAGE) {
-      return res.status(500).json({
-        status: 'error',
-        message: INVALID_PRODUCTS_FORMAT_MESSAGE,
-      })
+      return sendError(res, 500, INVALID_PRODUCTS_FORMAT_MESSAGE)
     }
 
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to read dashboard data.',
-      error: error.message,
-    })
+    return sendError(res, 500, 'Failed to read dashboard data.', error)
   }
 })
 

@@ -1,57 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import EmptyState from '../components/common/EmptyState.jsx'
+import ErrorState from '../components/common/ErrorState.jsx'
+import LoadingState from '../components/common/LoadingState.jsx'
 import { getFavorites, removeFavorite } from '../services/api'
-
-const DEFAULT_PRODUCT_IMAGE = '/images/products/placeholder.png'
-
-const riskLevelTextMap = {
-  low: '低风险',
-  medium: '中风险',
-  high: '高风险',
-  unknown: '风险未知',
-}
-
-function formatMoney(value, symbol) {
-  if (typeof value !== 'number') {
-    return '-'
-  }
-
-  return `${symbol}${value.toFixed(2)}`
-}
-
-function formatPercent(value) {
-  if (typeof value !== 'number') {
-    return '0.0%'
-  }
-
-  return `${value.toFixed(1)}%`
-}
-
-function formatNumber(value, digits = 0) {
-  if (typeof value !== 'number') {
-    return digits === 0 ? '0' : (0).toFixed(digits)
-  }
-
-  return value.toFixed(digits)
-}
-
-function getRiskLevelText(riskLevel) {
-  if (typeof riskLevel !== 'string' || riskLevel.trim() === '') {
-    return '风险未知'
-  }
-
-  return riskLevelTextMap[riskLevel] || riskLevel
-}
+import { formatMoney, formatPercent, formatRating, formatScore } from '../utils/format'
+import {
+  getProductCategory,
+  getProductImage,
+  getProductName,
+  getRiskLevelText,
+} from '../utils/product'
 
 function FavoriteProductItem({ product, removingProductId, onRemove }) {
   const [imageLoadError, setImageLoadError] = useState(false)
   const hasProductId = product?.id !== undefined && product?.id !== null && product?.id !== ''
   const isRemoving = hasProductId && removingProductId === product.id
-  const productName = product?.productName || '暂无'
-  const productImage =
-    typeof product?.image === 'string' && product.image.trim() !== '' && !imageLoadError
-      ? product.image
-      : DEFAULT_PRODUCT_IMAGE
+  const productName = getProductName(product)
+  const productImage = getProductImage(product, imageLoadError)
   const riskLevel = product?.riskLevel || 'unknown'
   const riskBadgeClassName = `favorite-card__risk-badge favorite-card__risk-badge--${riskLevel}`
 
@@ -73,7 +39,7 @@ function FavoriteProductItem({ product, removingProductId, onRemove }) {
         <div className="favorite-card__content">
           <div className="favorite-card__header">
             <div className="favorite-card__tag-row">
-              <p className="favorite-card__category">{product?.category || '暂无'}</p>
+              <p className="favorite-card__category">{getProductCategory(product)}</p>
               <span className={riskBadgeClassName}>{getRiskLevelText(riskLevel)}</span>
             </div>
             <h3 className="favorite-card__title">{productName}</h3>
@@ -104,21 +70,21 @@ function FavoriteProductItem({ product, removingProductId, onRemove }) {
             <div className="favorite-card__metric">
               <span className="favorite-card__metric-label">评分</span>
               <strong className="favorite-card__metric-value">
-                {formatNumber(product?.rating, 1)}
+                {formatRating(product?.rating)}
               </strong>
             </div>
 
             <div className="favorite-card__metric favorite-card__metric--competition">
               <span className="favorite-card__metric-label">竞争指数</span>
               <strong className="favorite-card__metric-value">
-                {formatNumber(product?.competitionScore)}
+                {formatScore(product?.competitionScore)}
               </strong>
             </div>
 
             <div className="favorite-card__metric favorite-card__metric--score">
               <span className="favorite-card__metric-label">推荐评分</span>
               <strong className="favorite-card__metric-value">
-                {formatNumber(product?.recommendationScore)}
+                {formatScore(product?.recommendationScore)}
               </strong>
             </div>
           </div>
@@ -204,16 +170,16 @@ function FavoritesPage() {
 
   return (
     <section className="page favorites-page">
-      {loading ? <p className="page-note page-note--loading">候选池加载中...</p> : null}
+      {loading ? <LoadingState>候选池加载中...</LoadingState> : null}
 
-      {!loading && error ? <p className="page-note page-note--error">请求失败：{error}</p> : null}
+      {!loading && error ? <ErrorState>{error}</ErrorState> : null}
 
       {!loading && !error && removeError ? (
-        <p className="page-note page-note--error">取消收藏失败：{removeError}</p>
+        <ErrorState prefix="取消收藏失败：">{removeError}</ErrorState>
       ) : null}
 
       {!loading && !error && !hasFavorites ? (
-        <p className="page-note page-note--empty">候选池暂无商品，可先从商品列表选择高潜力款加入跟进。</p>
+        <EmptyState>候选池暂无商品，可先从商品列表选择高潜力款加入跟进。</EmptyState>
       ) : null}
 
       {!loading && !error && hasFavorites ? (

@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import EmptyState from '../components/common/EmptyState.jsx'
+import ErrorState from '../components/common/ErrorState.jsx'
+import LoadingState from '../components/common/LoadingState.jsx'
 import ProductGrid from '../components/ProductGrid.jsx'
 import ProductFilters from '../components/ProductFilters.jsx'
 import { getProducts } from '../services/api'
@@ -122,14 +125,14 @@ function ProductsPage() {
         <p className="page-note page-note--info">当前展示完整商品池，可通过上方条件进一步筛选。</p>
       )}
 
-      {loading ? <p className="page-note page-note--loading">商品列表加载中...</p> : null}
+      {loading ? <LoadingState>商品列表加载中...</LoadingState> : null}
 
-      {!loading && error ? <p className="page-note page-note--error">请求失败：{error}</p> : null}
+      {!loading && error ? <ErrorState>{error}</ErrorState> : null}
 
       {!loading && !error && products.length === 0 ? (
-        <p className="page-note page-note--empty">
+        <EmptyState>
           没有找到符合条件的商品，请尝试更换关键词、类目、利润率或排序条件。
-        </p>
+        </EmptyState>
       ) : null}
 
       {!loading && !error && products.length > 0 ? <ProductGrid products={products} /> : null}

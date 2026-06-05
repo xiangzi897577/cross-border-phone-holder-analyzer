@@ -7,21 +7,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-
-function getProfitRatePercent(product) {
-  if (typeof product?.profitRatePercent === 'number' && Number.isFinite(product.profitRatePercent)) {
-    return product.profitRatePercent
-  }
-
-  if (typeof product?.profitRate === 'number' && Number.isFinite(product.profitRate)) {
-    return Number((product.profitRate * 100).toFixed(1))
-  }
-
-  return null
-}
+import { formatPercent, formatText } from '../utils/format'
+import { getProfitRatePercent } from '../utils/product'
 
 function getShortProductName(productName) {
-  const name = typeof productName === 'string' ? productName.trim() : '未命名商品'
+  const name = formatText(productName, '未命名商品')
 
   if (name.length <= 10) {
     return name
@@ -45,7 +35,7 @@ function getChartData(products) {
 
       return {
         id: product.id,
-        productName: product.productName || '未命名商品',
+        productName: formatText(product.productName, '未命名商品'),
         displayName: getShortProductName(product.productName),
         profitRatePercent,
         profit: product.profit,
@@ -94,7 +84,7 @@ function ProfitRankingChart({ products, topProfitProducts }) {
                 tick={{ fill: '#475569', fontSize: 12 }}
               />
               <Tooltip
-                formatter={(value) => [`${Number(value).toFixed(1)}%`, '利润率']}
+                formatter={(value) => [formatPercent(value), '利润率']}
                 labelFormatter={(_, payload) => {
                   return payload?.[0]?.payload?.productName || '商品'
                 }}

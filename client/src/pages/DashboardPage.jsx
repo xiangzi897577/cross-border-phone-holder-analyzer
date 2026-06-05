@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react'
 import CategoryPieChart from '../components/CategoryPieChart.jsx'
+import EmptyState from '../components/common/EmptyState.jsx'
+import ErrorState from '../components/common/ErrorState.jsx'
+import LoadingState from '../components/common/LoadingState.jsx'
 import ProfitRankingChart from '../components/ProfitRankingChart.jsx'
 import StatCard from '../components/StatCard.jsx'
 import { getDashboard } from '../services/api'
-
-function formatNumber(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? String(value) : '0'
-}
-
-function formatPercent(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(1)}%` : '0.0%'
-}
+import { formatNumber, formatPercent } from '../utils/format'
 
 function DashboardPage() {
   const [dashboard, setDashboard] = useState(null)
@@ -55,12 +51,12 @@ function DashboardPage() {
 
   return (
     <section className="page dashboard-page">
-      {loading ? <p className="page-note page-note--loading">Dashboard 数据加载中...</p> : null}
+      {loading ? <LoadingState>Dashboard 数据加载中...</LoadingState> : null}
 
-      {!loading && error ? <p className="page-note page-note--error">请求失败：{error}</p> : null}
+      {!loading && error ? <ErrorState>{error}</ErrorState> : null}
 
       {!loading && !error && !dashboard ? (
-        <p className="page-note page-note--empty">暂无 Dashboard 数据。</p>
+        <EmptyState>暂无 Dashboard 数据。</EmptyState>
       ) : null}
 
       {!loading && !error && dashboard ? (

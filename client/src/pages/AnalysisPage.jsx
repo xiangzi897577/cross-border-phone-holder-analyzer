@@ -1,29 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import EmptyState from '../components/common/EmptyState.jsx'
+import ErrorState from '../components/common/ErrorState.jsx'
+import LoadingState from '../components/common/LoadingState.jsx'
 import { getProducts } from '../services/api'
-
-const RISK_LEVEL_LABELS = {
-  high: '高风险',
-  medium: '中风险',
-  low: '低风险',
-  unknown: '未知',
-}
-
-function formatPercent(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(1)}%` : '0.0%'
-}
-
-function formatNumber(value, digits = 0) {
-  return typeof value === 'number' && Number.isFinite(value)
-    ? value.toFixed(digits)
-    : digits === 0
-      ? '0'
-      : (0).toFixed(digits)
-}
-
-function getRiskLevelLabel(riskLevel) {
-  return RISK_LEVEL_LABELS[riskLevel] || '未知'
-}
+import { formatPercent, formatScore } from '../utils/format'
+import { safeNumber } from '../utils/number'
+import {
+  getProductCategory,
+  getProductName,
+  getRiskFactors,
+  getRiskLevelText,
+} from '../utils/product'
 
 function getRecommendationText(recommendationReason) {
   if (Array.isArray(recommendationReason)) {
@@ -37,20 +25,19 @@ function getRecommendationText(recommendationReason) {
   return '暂无推荐理由。'
 }
 
-function getRiskFactors(product) {
-  return Array.isArray(product?.riskFactors) ? product.riskFactors.filter(Boolean) : []
-}
-
 function sortByRecommendation(products) {
   return [...products].sort((firstProduct, secondProduct) => {
-    const firstScore = firstProduct.recommendationScore ?? 0
-    const secondScore = secondProduct.recommendationScore ?? 0
+    const firstScore = safeNumber(firstProduct.recommendationScore, 0)
+    const secondScore = safeNumber(secondProduct.recommendationScore, 0)
 
     if (secondScore !== firstScore) {
       return secondScore - firstScore
     }
 
-    return (secondProduct.profitRatePercent ?? 0) - (firstProduct.profitRatePercent ?? 0)
+    return (
+      safeNumber(secondProduct.profitRatePercent, 0) -
+      safeNumber(firstProduct.profitRatePercent, 0)
+    )
   })
 }
 
@@ -61,8 +48,8 @@ function AnalysisProductCard({ product, cardType }) {
   return (
     <article className={`analysis-card analysis-card--${cardType}`}>
       <div className="analysis-card__header">
-        <p className="analysis-card__category">{product.category || '暂无类目'}</p>
-        <h4 className="analysis-card__title">{product.productName || '暂无商品名称'}</h4>
+        <p className="analysis-card__category">{getProductCategory(product, '暂无类目')}</p>
+        <h4 className="analysis-card__title">{getProductName(product, '暂无商品名称')}</h4>
       </div>
 
       <div className="analysis-card__metrics">
@@ -76,21 +63,21 @@ function AnalysisProductCard({ product, cardType }) {
         <div className="analysis-card__metric analysis-card__metric--competition">
           <span className="analysis-card__metric-label">竞争指数</span>
           <strong className="analysis-card__metric-value">
-            {formatNumber(product.competitionScore)}
+            {formatScore(product.competitionScore)}
           </strong>
         </div>
 
         <div className="analysis-card__metric analysis-card__metric--risk">
           <span className="analysis-card__metric-label">风险等级</span>
           <strong className="analysis-card__metric-value">
-            {getRiskLevelLabel(product.riskLevel)}
+            {getRiskLevelText(product.riskLevel, { emptyText: '未知', unknownText: '未知' })}
           </strong>
         </div>
 
         <div className="analysis-card__metric analysis-card__metric--score">
           <span className="analysis-card__metric-label">推荐评分</span>
           <strong className="analysis-card__metric-value">
-            {formatNumber(product.recommendationScore)}
+            {formatScore(product.recommendationScore)}
           </strong>
         </div>
       </div>
@@ -182,9 +169,9 @@ function AnalysisPage() {
   const analysisGroups = useMemo(() => {
     const highPotentialProducts = sortByRecommendation(
       products.filter((product) => {
-        const profitRatePercent = product.profitRatePercent ?? 0
-        const competitionScore = product.competitionScore ?? 100
-        const recommendationScore = product.recommendationScore ?? 0
+        const profitRatePercent = safeNumber(product.profitRatePercent, 0)
+        const competitionScore = safeNumber(product.competitionScore, 100)
+        const recommendationScore = safeNumber(product.recommendationScore, 0)
 
         return (
           product.riskLevel !== 'high' &&
@@ -203,8 +190,8 @@ function AnalysisPage() {
       .sort((firstProduct, secondProduct) => {
         const firstRiskCount = getRiskFactors(firstProduct).length
         const secondRiskCount = getRiskFactors(secondProduct).length
-        const firstCompetitionScore = firstProduct.competitionScore ?? 0
-        const secondCompetitionScore = secondProduct.competitionScore ?? 0
+        const firstCompetitionScore = safeNumber(firstProduct.competitionScore, 0)
+        const secondCompetitionScore = safeNumber(secondProduct.competitionScore, 0)
 
         if (secondRiskCount !== firstRiskCount) {
           return secondRiskCount - firstRiskCount
@@ -216,8 +203,8 @@ function AnalysisPage() {
 
     const lowCompetitionHighProfitProducts = sortByRecommendation(
       products.filter((product) => {
-        const profitRatePercent = product.profitRatePercent ?? 0
-        const competitionScore = product.competitionScore ?? 100
+        const profitRatePercent = safeNumber(product.profitRatePercent, 0)
+        const competitionScore = safeNumber(product.competitionScore, 100)
 
         return competitionScore <= 55 && profitRatePercent >= 220
       }),
@@ -234,12 +221,12 @@ function AnalysisPage() {
 
   return (
     <section className="page analysis-page">
-      {loading ? <p className="page-note page-note--loading">选品分析数据加载中...</p> : null}
+      {loading ? <LoadingState>选品分析数据加载中...</LoadingState> : null}
 
-      {!loading && error ? <p className="page-note page-note--error">请求失败：{error}</p> : null}
+      {!loading && error ? <ErrorState>{error}</ErrorState> : null}
 
       {!loading && !error && !hasProducts ? (
-        <p className="page-note page-note--empty">暂无商品数据，暂时无法生成选品分析。</p>
+        <EmptyState>暂无商品数据，暂时无法生成选品分析。</EmptyState>
       ) : null}
 
       {!loading && !error && hasProducts ? (
