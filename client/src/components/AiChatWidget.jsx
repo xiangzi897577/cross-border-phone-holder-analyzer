@@ -8,6 +8,7 @@ function AiChatWidget() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const messagesRef = useRef(null)
+  const sendingRef = useRef(false)
 
   useEffect(() => {
     if (!isOpen || !messagesRef.current) {
@@ -22,10 +23,11 @@ function AiChatWidget() {
 
     const nextMessage = inputValue.trim()
 
-    if (!nextMessage || sending) {
+    if (!nextMessage || sendingRef.current) {
       return
     }
 
+    sendingRef.current = true
     const messageId = Date.now()
     setMessages((currentMessages) => [
       ...currentMessages,
@@ -52,6 +54,7 @@ function AiChatWidget() {
     } catch (requestError) {
       setError(requestError.message || 'AI 选品助手请求失败')
     } finally {
+      sendingRef.current = false
       setSending(false)
     }
   }
@@ -63,7 +66,7 @@ function AiChatWidget() {
 
     event.preventDefault()
 
-    if (sending || !inputValue.trim()) {
+    if (sending || sendingRef.current || !inputValue.trim()) {
       return
     }
 

@@ -222,13 +222,12 @@ export async function chatWithAi(message, options = {}) {
   const chatResult = await requestJson(
     '/api/ai/chat',
     {
-      400: 'AI 选品助手问题不能为空',
       default: 'AI 选品助手请求失败',
     },
     {
       ...options,
       method: 'POST',
-      headers: createHeaders(options, {
+      headers: createHeaders(withClientIdHeader(options), {
         'Content-Type': 'application/json',
       }),
       body: JSON.stringify({ message: normalizedMessage }),

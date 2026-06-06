@@ -2683,3 +2683,108 @@ ZHIPU_MODEL=glm-4.7-flash
 
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 39 记录。
+
+## Day 40 - 2026-06-06：接入 NVIDIA NIM 并优化 AI 对话并发控制
+
+### 今日目标
+- 在现有 AI 对话接口中接入 NVIDIA Build / NIM 免费 API。
+- 保留原有智谱 AI 调用逻辑，通过 `AI_PROVIDER` 控制当前 provider。
+- 为 NVIDIA 模型调用增加顺序 fallback，减少单个模型限流导致接口不可用的问题。
+- 为 AI chat 接口增加同一 client 并发控制，避免用户连点触发多个第三方 AI 请求。
+- 保持现有前端接口返回格式尽量不变，不影响商品、Dashboard、候选池等已有页面功能。
+
+### 今日完成内容
+- 新增 NVIDIA NIM provider，使用 OpenAI-compatible `POST /v1/chat/completions` 调用方式。
+- 新增 AI provider 选择层：
+  - `AI_PROVIDER=nvidia` 时走 NVIDIA NIM。
+  - `AI_PROVIDER=zhipu` 时走原智谱逻辑。
+  - 不配置 `AI_PROVIDER` 时仍默认走 `zhipu`，避免旧环境突然失效。
+- 为 NVIDIA provider 增加多模型顺序 fallback：
+  - 只按模型列表顺序逐个请求。
+  - 不并发请求多个模型。
+  - 429、408、500、502、503、504 或请求超时时尝试下一个模型。
+  - 400、401、403 这类配置或权限错误不继续 fallback。
+- 为 NVIDIA provider 增加每个模型 60 秒 429 冷却。
+- 为每个 NVIDIA 模型请求设置 25 秒超时。
+- 后端日志增加当前尝试模型、失败状态码、fallback、最终使用模型和全部失败原因。
+- AI chat 路由增加同一 client 并发锁：
+  - 同一 `x-client-id` 同时只允许一个 AI 请求。
+  - 如果上一次 AI 请求未完成，第二个请求直接返回 429。
+- 前端 `chatWithAi` 请求增加 `x-client-id` 请求头。
+- 前端聊天组件增加 `sendingRef`，进一步防止快速连点或 Enter 重复提交。
+- README 补充 NVIDIA / AI_PROVIDER 环境变量说明。
+
+### 修改了哪些文件
+- `server/services/nvidiaService.js`
+- `server/services/aiProviderService.js`
+- `server/routes/ai.js`
+- `client/src/services/api.js`
+- `client/src/components/AiChatWidget.jsx`
+- `README.md`
+- `docs/DAILY_LOG.md`
+
+### NVIDIA 模型配置说明
+- 默认首选模型：`deepseek-ai/deepseek-v4-flash`。
+- 根据 NVIDIA Build 页面检查结果，对部分候选模型做了修正：
+  - `deepseek-ai/deepseek-v4-pro` 当前 Free Endpoint 不可用，替换为 `nvidia/nemotron-3-ultra-550b-a55b`。
+  - `mistralai/mixtral-8x22b-instruct-v0.1` 当前已 Deprecated，替换为 `mistralai/mistral-medium-3.5-128b`。
+  - `microsoft/phi-4` 未找到对应文本聊天 Free Endpoint，替换为 `microsoft/phi-4-mini-instruct`。
+
+### 环境变量
+- 本地后端 `server/.env` 可配置：
+
+```txt
+AI_PROVIDER=nvidia
+NVIDIA_API_KEY=你的 NVIDIA API Key
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+NVIDIA_MODELS=deepseek-ai/deepseek-v4-flash,nvidia/nemotron-3-ultra-550b-a55b,nvidia/nemotron-3-super-120b-a12b,meta/llama-3.3-70b-instruct,openai/gpt-oss-120b,qwen/qwen3-coder-480b-a35b-instruct,mistralai/mistral-medium-3.5-128b,microsoft/phi-4-mini-instruct
+```
+
+- `NVIDIA_API_KEY` 只能放后端环境变量，不能写到前端代码，也不能使用 `VITE_NVIDIA_API_KEY`。
+- `NVIDIA_BASE_URL` 可选，不配置时默认使用 `https://integrate.api.nvidia.com/v1`。
+- `NVIDIA_MODELS` 可选，不配置时使用后端默认模型顺序。
+- 如需切回智谱，可配置：
+
+```txt
+AI_PROVIDER=zhipu
+ZHIPU_API_KEY=你的智谱 API Key
+ZHIPU_MODEL=glm-4.7-flash
+```
+
+### 保持不变的内容
+- 没有删除原有智谱 service。
+- 没有引入新的第三方 SDK 或依赖。
+- 没有改动商品业务计算逻辑。
+- 没有改动 Supabase 商品读取逻辑。
+- 没有改动 Dashboard、Products、Product Detail、Analysis、Favorites 页面业务功能。
+- 没有新增登录、鉴权、数据库表、聊天记录持久化或复杂 Agent 框架。
+
+### 本地验证结果
+- `node --check server/services/nvidiaService.js` 通过。
+- `node --check server/services/aiProviderService.js` 通过。
+- `node --check server/routes/ai.js` 通过。
+- `client` 下执行 `npm run lint` 通过。
+- `client` 下执行 `npm run build` 通过。
+- 未配置 `NVIDIA_API_KEY` 时，`POST /api/ai/chat` 返回 401 和明确提示，不会崩溃。
+- 使用本地 fake NVIDIA endpoint 验证：
+  - 第一个模型返回 429 后，会顺序 fallback 到第二个模型。
+  - 触发 429 的模型会进入 60 秒冷却。
+  - 冷却期间会跳过该模型，直接尝试下一个模型。
+  - 同一 `x-client-id` 的第二个并发 AI 请求会被 429 拦截。
+  - 配置错误类 400 不继续 fallback。
+- 使用本地 Express 临时端口验证普通接口不受影响：
+  - `GET /api/health` 返回 200。
+  - `GET /api/products` 返回 200，数据为数组。
+  - `GET /api/dashboard` 返回 200，数据为对象。
+  - `GET /api/favorites` 返回 200，数据为数组。
+- 本地未配置真实 `NVIDIA_API_KEY`，因此没有执行真实 deepseek 模型调用。
+
+### 今日重点理解知识点
+- NVIDIA NIM 可以按 OpenAI-compatible 格式调用，核心是后端使用 `NVIDIA_BASE_URL + /chat/completions`、`Authorization: Bearer NVIDIA_API_KEY` 和 `model` 字段。
+- AI fallback 应该顺序执行，不能为了抢速度同时打多个模型，否则更容易触发限流。
+- 429 属于可恢复错误，可以进入短期冷却；400、401、403 通常是配置、参数或权限问题，不应该继续盲目 fallback。
+- 后端并发锁比只依赖前端按钮禁用更可靠，因为用户可能连点、重复请求、刷新或绕过前端。
+- 第三方 AI API Key 必须始终只保存在后端环境变量中。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 40 记录。

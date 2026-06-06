@@ -198,7 +198,7 @@ x-client-id: 当前浏览器匿名 client_id
 
 ### `POST /api/ai/chat`
 
-调用后端封装的智谱 GLM 服务，返回单轮 AI 选品建议。
+调用后端封装的 AI 服务，返回单轮 AI 选品建议。当前支持通过 `AI_PROVIDER` 在 `zhipu` 和 `nvidia` 之间切换。
 
 请求体示例：
 
@@ -228,7 +228,7 @@ x-client-id: 当前浏览器匿名 client_id
 }
 ```
 
-该接口只在后端读取 `ZHIPU_API_KEY`，前端不能直接调用智谱 API，也不能配置 `VITE_ZHIPU_API_KEY`。
+该接口只在后端读取 `ZHIPU_API_KEY` 或 `NVIDIA_API_KEY`，前端不能直接调用第三方 AI API，也不能配置 `VITE_ZHIPU_API_KEY` / `VITE_NVIDIA_API_KEY`。
 
 ---
 
@@ -370,10 +370,15 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_server_only_secret_key
 ZHIPU_API_KEY=your_zhipu_api_key
 ZHIPU_MODEL=glm-4.7-flash
+AI_PROVIDER=nvidia
+NVIDIA_API_KEY=your_nvidia_api_key
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+NVIDIA_REQUEST_TIMEOUT_MS=12000
+NVIDIA_MODELS=deepseek-ai/deepseek-v4-flash,nvidia/nemotron-3-ultra-550b-a55b,nvidia/nemotron-3-super-120b-a12b,meta/llama-3.3-70b-instruct,openai/gpt-oss-120b,qwen/qwen3-coder-480b-a35b-instruct,mistralai/mistral-medium-3.5-128b,microsoft/phi-4-mini-instruct
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` 只能配置在后端环境变量中，不能写入前端代码，也不能使用 `VITE_` 前缀暴露给浏览器。
-`ZHIPU_API_KEY` 同样只能配置在后端环境变量中，不能写入前端代码，也不能使用 `VITE_` 前缀暴露给浏览器。`ZHIPU_MODEL` 可选，不配置时后端默认使用 `glm-4.7-flash`。
+`ZHIPU_API_KEY` 和 `NVIDIA_API_KEY` 同样只能配置在后端环境变量中，不能写入前端代码，也不能使用 `VITE_` 前缀暴露给浏览器。`AI_PROVIDER` 可选，不配置时默认使用 `zhipu`；设置为 `nvidia` 时会调用 NVIDIA NIM。`ZHIPU_MODEL` 可选，不配置时后端默认使用 `glm-4.7-flash`。`NVIDIA_BASE_URL` 可选，不配置时默认使用 `https://integrate.api.nvidia.com/v1`。`NVIDIA_REQUEST_TIMEOUT_MS` 可选，用于控制单个 NVIDIA 模型请求等待时间，建议本地演示使用 `12000`。
 
 ---
 
@@ -401,6 +406,11 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_server_only_secret_key
 ZHIPU_API_KEY=your_zhipu_api_key
 ZHIPU_MODEL=glm-4.7-flash
+AI_PROVIDER=nvidia
+NVIDIA_API_KEY=your_nvidia_api_key
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+NVIDIA_REQUEST_TIMEOUT_MS=12000
+NVIDIA_MODELS=deepseek-ai/deepseek-v4-flash,nvidia/nemotron-3-ultra-550b-a55b,nvidia/nemotron-3-super-120b-a12b,meta/llama-3.3-70b-instruct,openai/gpt-oss-120b,qwen/qwen3-coder-480b-a35b-instruct,mistralai/mistral-medium-3.5-128b,microsoft/phi-4-mini-instruct
 ```
 
 后端入口结构：
