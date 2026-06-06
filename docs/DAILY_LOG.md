@@ -2569,3 +2569,117 @@ const currentFilePath = fileURLToPath(import.meta.url)
 
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 38 记录。
+
+## Day 39 - 2026-06-05：后端封装智谱 AI 调用服务
+
+### 今日目标
+- 新增后端智谱 GLM 调用服务。
+- 新增 `POST /api/ai/chat` 单轮对话接口。
+- 不做前端聊天弹窗、不做多轮对话、不做 RAG、不做聊天记录持久化。
+- 保持商品、收藏、Dashboard 既有接口稳定。
+
+### 今日完成内容
+- 新建 `server/services` 目录。
+- 新增 `server/services/zhipuService.js`，集中封装智谱 API 调用逻辑。
+- 新增 `server/routes/ai.js`，实现 `POST /api/ai/chat`。
+- 在 `server/app.js` 中挂载 `/api/ai` 路由。
+- 将本地入口 `server/index.js` 调整为复用 `server/config/env.js`，确保本地优先读取后端 `server/.env`。
+- 在 README 中补充 AI 接口、后端环境变量和 Vercel 配置说明。
+- 第一版使用原生 `fetch` 调用智谱 Chat Completions，不新增 SDK 依赖。
+
+### 修改了哪些文件
+- `server/services/zhipuService.js`
+- `server/routes/ai.js`
+- `server/app.js`
+- `server/index.js`
+- `README.md`
+- `docs/DAILY_LOG.md`
+
+### 智谱服务封装内容
+- 从 `process.env.ZHIPU_API_KEY` 读取后端 API Key。
+- 模型集中配置为 `process.env.ZHIPU_MODEL || 'glm-4.7-flash'`。
+- 请求地址集中放在服务层：`https://open.bigmodel.cn/api/paas/v4/chat/completions`。
+- 内置跨境电商选品分析师 system prompt。
+- 限制单条用户 message 最大长度为 1000 字符。
+- 限制 prompt 总长度为 8000 字符。
+- 设置请求超时时间为 30 秒。
+- 处理第三方请求失败、超时、返回 JSON 异常和回复内容为空。
+- 不在代码中写死 API Key，不在日志中打印 API Key。
+
+### 新增接口
+- `POST /api/ai/chat`
+
+请求体示例：
+
+```json
+{
+  "message": "帮我推荐适合新手的手机支架"
+}
+```
+
+成功返回示例：
+
+```json
+{
+  "success": true,
+  "data": {
+    "reply": "AI 返回的选品建议"
+  }
+}
+```
+
+错误返回示例：
+
+```json
+{
+  "success": false,
+  "message": "AI 服务暂时不可用，请稍后再试。"
+}
+```
+
+### 环境变量
+- 本地后端 `server/.env` 需要新增：
+
+```txt
+ZHIPU_API_KEY=你的智谱 API Key
+ZHIPU_MODEL=glm-4.7-flash
+```
+
+- `ZHIPU_MODEL` 是可选项，不配置时默认使用 `glm-4.7-flash`。
+- `ZHIPU_API_KEY` 只能放后端环境变量，不能放前端，不能使用 `VITE_ZHIPU_API_KEY`。
+
+### 保持不变的内容
+- 没有改动商品接口：
+  - `GET /api/products`
+  - `GET /api/products/:id`
+- 没有改动 Dashboard 接口：
+  - `GET /api/dashboard`
+- 没有改动 favorites 接口：
+  - `GET /api/favorites`
+  - `POST /api/favorites`
+  - `DELETE /api/favorites/:id`
+- 没有新增前端聊天弹窗。
+- 没有新增聊天记录数据库。
+- 没有新增向量数据库。
+- 没有引入复杂 Agent 框架。
+
+### 本地验证结果
+- 对新增和修改的后端文件执行 `node --check`，结果通过。
+- 对 `server` 下所有 `.js` 文件执行 `node --check`，结果通过。
+- 使用临时 Express 端口验证 `GET /api/health`，返回 200。
+- 使用临时 Express 端口验证 `POST /api/ai/chat`：
+  - `message` 为空：400，返回 `success: false`。
+  - `message` 缺失：400，返回 `success: false`。
+  - `message` 超过 1000 字符：400，返回 `success: false`。
+  - 缺少 `ZHIPU_API_KEY`：503，返回清晰错误提示。
+  - mock 智谱成功响应：200，返回 `success: true` 和 `data.reply`。
+  - mock 智谱失败响应：502，返回 `AI 服务暂时不可用，请稍后再试。`
+
+### 今日重点理解知识点
+- 第三方 AI API Key 必须只放在后端环境变量中，不能暴露到浏览器。
+- route 层负责请求校验和响应格式，service 层负责第三方 API 调用细节。
+- AI 接口错误不能把第三方原始错误完整返回给前端，只返回用户能理解的安全提示。
+- Day 39 先做单轮对话能力，后续 Day 40 再接前端弹窗，Day 41 再把商品上下文插入 messages。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 39 记录。

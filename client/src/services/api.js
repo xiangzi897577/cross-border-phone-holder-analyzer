@@ -212,6 +212,48 @@ export async function getDashboard(options = {}) {
   return dashboard
 }
 
+export async function chatWithAi(message, options = {}) {
+  const normalizedMessage = String(message || '').trim()
+
+  if (!normalizedMessage) {
+    throw new Error('请输入要咨询的问题')
+  }
+
+  const chatResult = await requestJson(
+    '/api/ai/chat',
+    {
+      400: 'AI 选品助手问题不能为空',
+      default: 'AI 选品助手请求失败',
+    },
+    {
+      ...options,
+      method: 'POST',
+      headers: createHeaders(options, {
+        'Content-Type': 'application/json',
+      }),
+      body: JSON.stringify({ message: normalizedMessage }),
+    },
+  )
+
+  if (typeof chatResult === 'string') {
+    return chatResult
+  }
+
+  if (typeof chatResult?.data?.reply === 'string') {
+    return chatResult.data.reply
+  }
+
+  if (typeof chatResult?.reply === 'string') {
+    return chatResult.reply
+  }
+
+  if (typeof chatResult?.data === 'string') {
+    return chatResult.data
+  }
+
+  throw new Error('AI 回复数据格式不正确')
+}
+
 export async function addFavorite(productId, options = {}) {
   const favoriteResult = await requestJson(
     '/api/favorites',

@@ -3,6 +3,7 @@ import cors from 'cors'
 import productsRouter from './routes/products.js'
 import dashboardRouter from './routes/dashboard.js'
 import favoritesRouter from './routes/favorites.js'
+import aiRouter from './routes/ai.js'
 
 const app = express()
 
@@ -21,6 +22,7 @@ app.get('/', (req, res) => {
       'GET /api/favorites',
       'POST /api/favorites',
       'DELETE /api/favorites/:id',
+      'POST /api/ai/chat',
     ],
   })
 })
@@ -35,6 +37,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/products', productsRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/favorites', favoritesRouter)
+app.use('/api/ai', aiRouter)
 
 app.use((req, res) => {
   res.status(404).json({
@@ -49,6 +52,7 @@ app.use((req, res) => {
       'GET /api/favorites',
       'POST /api/favorites',
       'DELETE /api/favorites/:id',
+      'POST /api/ai/chat',
     ],
   })
 })

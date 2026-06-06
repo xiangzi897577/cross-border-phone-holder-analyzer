@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import './App.css'
+import AiChatWidget from './components/AiChatWidget.jsx'
 import Layout from './components/Layout.jsx'
 import AnalysisPage from './pages/AnalysisPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
@@ -18,6 +19,7 @@ function App() {
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
       </Routes>
+      <AiChatWidget />
     </Layout>
   )
 }

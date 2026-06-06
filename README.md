@@ -40,6 +40,7 @@
 * Express
 * Vercel Serverless Functions
 * Supabase PostgreSQL
+* Zhipu GLM API
 * JSON 文件备份商品数据
 
 ### 当前数据来源
@@ -195,6 +196,40 @@ x-client-id: 当前浏览器匿名 client_id
 x-client-id: 当前浏览器匿名 client_id
 ```
 
+### `POST /api/ai/chat`
+
+调用后端封装的智谱 GLM 服务，返回单轮 AI 选品建议。
+
+请求体示例：
+
+```json
+{
+  "message": "帮我推荐适合新手的手机支架"
+}
+```
+
+成功返回示例：
+
+```json
+{
+  "success": true,
+  "data": {
+    "reply": "可以优先关注轻小件、低物流成本、评分稳定且竞争指数较低的手机支架..."
+  }
+}
+```
+
+错误返回示例：
+
+```json
+{
+  "success": false,
+  "message": "AI 服务暂时不可用，请稍后再试。"
+}
+```
+
+该接口只在后端读取 `ZHIPU_API_KEY`，前端不能直接调用智谱 API，也不能配置 `VITE_ZHIPU_API_KEY`。
+
 ---
 
 ## 核心计算字段
@@ -333,9 +368,12 @@ VITE_API_BASE_URL=https://your-backend-url
 ```txt
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_server_only_secret_key
+ZHIPU_API_KEY=your_zhipu_api_key
+ZHIPU_MODEL=glm-4.7-flash
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` 只能配置在后端环境变量中，不能写入前端代码，也不能使用 `VITE_` 前缀暴露给浏览器。
+`ZHIPU_API_KEY` 同样只能配置在后端环境变量中，不能写入前端代码，也不能使用 `VITE_` 前缀暴露给浏览器。`ZHIPU_MODEL` 可选，不配置时后端默认使用 `glm-4.7-flash`。
 
 ---
 
@@ -361,6 +399,8 @@ Output Directory: 留空
 ```txt
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_server_only_secret_key
+ZHIPU_API_KEY=your_zhipu_api_key
+ZHIPU_MODEL=glm-4.7-flash
 ```
 
 后端入口结构：
@@ -394,9 +434,11 @@ https://cross-border-phone-holder-api.vercel.app/api/products
 https://cross-border-phone-holder-api.vercel.app/api/products/1
 https://cross-border-phone-holder-api.vercel.app/api/dashboard
 https://cross-border-phone-holder-api.vercel.app/api/favorites
+https://cross-border-phone-holder-api.vercel.app/api/ai/chat
 ```
 
 `/api/favorites` 需要 `x-client-id` 请求头，推荐通过前端页面的收藏和取消收藏流程验证，同时在 Supabase Table Editor 中确认 `favorites` 表记录新增和删除。
+`/api/ai/chat` 是 `POST` 接口，需要在后端 Vercel 项目中配置 `ZHIPU_API_KEY` 后再验证。
 
 ---
 
@@ -413,6 +455,7 @@ https://cross-border-phone-holder-api.vercel.app/api/favorites
 * http://localhost:3000/api/products/1
 * http://localhost:3000/api/dashboard
 * http://localhost:3000/api/favorites
+* http://localhost:3000/api/ai/chat
 
 ### 前端页面
 
