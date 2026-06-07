@@ -107,7 +107,7 @@ function ProductCard({ product }) {
 
         <div className="product-card__footer">
           <span className="product-card__detail-hint">
-            {hasProductId ? `查看商品 #${product.id} 详情` : '缺少商品 id，暂时无法跳转'}
+            {hasProductId ? '查看商品详情' : '缺少商品 id，暂时无法跳转'}
           </span>
         </div>
       </div>

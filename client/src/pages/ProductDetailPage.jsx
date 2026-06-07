@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ErrorState from '../components/common/ErrorState.jsx'
 import LoadingState from '../components/common/LoadingState.jsx'
-import { addFavorite, getProductById } from '../services/api'
+import MarkdownContent from '../components/MarkdownContent.jsx'
+import { addFavorite, generateAiProductReport, getProductById } from '../services/api'
 import {
   formatMoney,
   formatNumber,
@@ -19,6 +20,7 @@ import {
   getRiskFactors,
   getRiskLevelText,
 } from '../utils/product'
+import { buildBasicProductReport, getReportSourceLabel } from '../utils/productReport'
 
 function DecisionMetric({ label, value, tone = '' }) {
   const metricClassName = tone
@@ -53,6 +55,10 @@ function ProductDetailPage() {
   const [favoriteLoading, setFavoriteLoading] = useState(false)
   const [favoriteMessage, setFavoriteMessage] = useState('')
   const [favoriteMessageType, setFavoriteMessageType] = useState('')
+  const [aiReport, setAiReport] = useState('')
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportError, setReportError] = useState('')
+  const reportAbortControllerRef = useRef(null)
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -65,6 +71,11 @@ function ProductDetailPage() {
       setFavoriteMessage('')
       setFavoriteMessageType('')
       setFavoriteLoading(false)
+      setAiReport('')
+      setReportError('')
+      setReportLoading(false)
+      reportAbortControllerRef.current?.abort()
+      reportAbortControllerRef.current = null
 
       try {
         const productData = await getProductById(id, { signal: abortController.signal })
@@ -84,6 +95,7 @@ function ProductDetailPage() {
 
     return () => {
       abortController.abort()
+      reportAbortControllerRef.current?.abort()
     }
   }, [id])
 
@@ -108,10 +120,45 @@ function ProductDetailPage() {
     }
   }
 
+  async function handleGenerateAiReport() {
+    if (!product?.id || reportLoading) {
+      return
+    }
+
+    reportAbortControllerRef.current?.abort()
+    const abortController = new AbortController()
+    reportAbortControllerRef.current = abortController
+
+    setReportLoading(true)
+    setReportError('')
+
+    try {
+      const result = await generateAiProductReport(product.id, {
+        signal: abortController.signal,
+      })
+      setAiReport(result.report)
+    } catch (requestError) {
+      if (requestError.name === 'AbortError') {
+        return
+      }
+
+      setAiReport('')
+      setReportError('AI 深度报告暂时不可用，已为你展示基础选品报告，请稍后重试。')
+    } finally {
+      if (reportAbortControllerRef.current === abortController) {
+        reportAbortControllerRef.current = null
+        setReportLoading(false)
+      }
+    }
+  }
+
   const productImage = getProductImage(product, imageLoadError)
   const tags = getProductTags(product)
   const riskFactors = getRiskFactors(product)
   const currentProductId = product?.id ?? id
+  const basicReport = useMemo(() => (product ? buildBasicProductReport(product) : ''), [product])
+  const reportContent = aiReport || basicReport
+  const reportSource = getReportSourceLabel(aiReport ? 'ai' : 'basic')
 
   return (
     <section className="page detail-page">
@@ -297,6 +344,34 @@ function ProductDetailPage() {
               <p className="detail-page__recommendation">
                 {formatText(product.recommendationReason)}
               </p>
+            </section>
+
+            <section className="detail-page__section product-report">
+              <div className="product-report__header">
+                <div>
+                  <p className="product-report__eyebrow">Product Report</p>
+                  <h3 className="detail-page__section-title product-report__title">
+                    AI 选品分析报告
+                  </h3>
+                </div>
+                <span className="product-report__source">{reportSource}</span>
+              </div>
+
+              <div className="product-report__actions">
+                <button
+                  className="detail-page__favorite-button"
+                  type="button"
+                  disabled={reportLoading}
+                  onClick={handleGenerateAiReport}
+                >
+                  {reportLoading ? 'AI 正在分析当前商品...' : '生成 AI 深度报告'}
+                </button>
+                {reportError ? <p className="product-report__error">{reportError}</p> : null}
+              </div>
+
+              <MarkdownContent className="product-report__content">
+                {reportContent}
+              </MarkdownContent>
             </section>
           </div>
         </>

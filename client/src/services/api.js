@@ -5,6 +5,7 @@ const CLIENT_ID_STORAGE_KEY = 'phone_holder_analyzer_client_id'
 const MAX_AI_REQUEST_MESSAGES = 6
 const MAX_AI_REQUEST_ASSISTANT_CONTENT_LENGTH = 700
 const AI_CHAT_REQUEST_TIMEOUT_MS = 45000
+const AI_PRODUCT_REPORT_REQUEST_TIMEOUT_MS = 60000
 const AI_TEMPORARY_ERROR_MESSAGE = 'AI 服务暂时不可用，请稍后再试'
 
 let memoryClientId = ''
@@ -315,6 +316,86 @@ export async function chatWithAi(messages, options = {}) {
   }
 
   throw new Error('AI 回复数据格式不正确')
+}
+
+export async function generateAiProductReport(productId, options = {}) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isInteger(normalizedProductId) || normalizedProductId <= 0) {
+    throw new Error('商品 id 不合法，无法生成 AI 报告')
+  }
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+  let removeAbortListener = null
+
+  if (options.signal && controller) {
+    if (options.signal.aborted) {
+      controller.abort()
+    } else {
+      const handleAbort = () => controller.abort()
+      options.signal.addEventListener('abort', handleAbort, { once: true })
+      removeAbortListener = () => options.signal.removeEventListener('abort', handleAbort)
+    }
+  }
+
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), AI_PRODUCT_REPORT_REQUEST_TIMEOUT_MS)
+    : null
+
+  try {
+    const reportResult = await requestJson(
+      '/api/ai/product-report',
+      {
+        400: '商品 id 不合法，无法生成 AI 报告',
+        404: '商品不存在，无法生成 AI 报告',
+        default: 'AI 深度报告暂时不可用',
+      },
+      {
+        ...options,
+        method: 'POST',
+        signal: controller?.signal || options.signal,
+        headers: createHeaders(withClientIdHeader(options), {
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({ productId: normalizedProductId }),
+      },
+    )
+
+    const report =
+      typeof reportResult?.data?.report === 'string'
+        ? reportResult.data.report
+        : typeof reportResult?.report === 'string'
+          ? reportResult.report
+          : ''
+
+    if (!report.trim()) {
+      throw new Error('AI 深度报告返回数据格式不正确')
+    }
+
+    return {
+      report,
+      provider: reportResult?.data?.provider || reportResult?.provider,
+      model: reportResult?.data?.model || reportResult?.model,
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      if (options.signal?.aborted) {
+        throw error
+      }
+
+      throw new Error('AI 深度报告暂时不可用', { cause: error })
+    }
+
+    throw error
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+
+    if (removeAbortListener) {
+      removeAbortListener()
+    }
+  }
 }
 
 export async function addFavorite(productId, options = {}) {

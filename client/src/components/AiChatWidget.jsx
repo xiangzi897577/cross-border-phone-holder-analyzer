@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import MarkdownContent from './MarkdownContent.jsx'
 import { chatWithAi } from '../services/api'
 
 const MAX_AI_REQUEST_MESSAGES = 6
@@ -25,19 +24,6 @@ function getMessagesForAiRequest(messages) {
     })
 }
 
-const markdownComponents = {
-  table(props) {
-    const tableProps = { ...props }
-    delete tableProps.node
-
-    return (
-      <div className="ai-chat-widget__markdown-table-wrapper">
-        <table {...tableProps} />
-      </div>
-    )
-  },
-}
-
 function AiMessageContent({ message }) {
   if (message.role !== 'assistant' || message.isError) {
     return (
@@ -48,11 +34,7 @@ function AiMessageContent({ message }) {
   }
 
   return (
-    <div className="ai-chat-widget__message-content ai-chat-widget__message-content--markdown">
-      <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
-        {message.content}
-      </ReactMarkdown>
-    </div>
+    <MarkdownContent className="ai-chat-widget__message-content">{message.content}</MarkdownContent>
   )
 }
 

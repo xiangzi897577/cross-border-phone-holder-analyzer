@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import EmptyState from '../components/common/EmptyState.jsx'
 import ErrorState from '../components/common/ErrorState.jsx'
 import LoadingState from '../components/common/LoadingState.jsx'
 import ProductGrid from '../components/ProductGrid.jsx'
 import ProductFilters from '../components/ProductFilters.jsx'
+import ProductStrategyFilter from '../components/ProductStrategyFilter.jsx'
 import { getProducts } from '../services/api'
+import { filterProductsByStrategy, getProductStrategy } from '../utils/productStrategies'
 
 const DEFAULT_FILTERS = {
   keyword: '',
@@ -26,6 +28,7 @@ function ProductsPage() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [activeStrategyId, setActiveStrategyId] = useState('')
   const latestRequestId = useRef(0)
 
   async function loadProducts(nextFilters, options = {}) {
@@ -54,7 +57,14 @@ function ProductsPage() {
 
   function handleResetFilters() {
     setFilters(DEFAULT_FILTERS)
+    setActiveStrategyId('')
     loadProducts(DEFAULT_FILTERS)
+  }
+
+  function handleStrategyChange(nextStrategyId) {
+    setActiveStrategyId((currentStrategyId) =>
+      currentStrategyId === nextStrategyId ? '' : nextStrategyId,
+    )
   }
 
   useEffect(() => {
@@ -97,6 +107,11 @@ function ProductsPage() {
     filters.keyword || filters.category || filters.minProfitRate || filters.sort,
   )
   const currentSortLabel = SORT_LABELS[filters.sort] || '默认排序'
+  const activeStrategy = getProductStrategy(activeStrategyId)
+  const displayProducts = useMemo(
+    () => filterProductsByStrategy(products, activeStrategyId),
+    [products, activeStrategyId],
+  )
 
   return (
     <section className="page products-page">
@@ -105,6 +120,12 @@ function ProductsPage() {
         onFiltersChange={setFilters}
         onSearch={loadProducts}
         onReset={handleResetFilters}
+      />
+
+      <ProductStrategyFilter
+        activeStrategyId={activeStrategyId}
+        onStrategyChange={handleStrategyChange}
+        onClear={() => setActiveStrategyId('')}
       />
 
       {hasActiveFilters ? (
@@ -125,17 +146,28 @@ function ProductsPage() {
         <p className="page-note page-note--info">当前展示完整商品池，可通过上方条件进一步筛选。</p>
       )}
 
+      {activeStrategy ? (
+        <p className="page-note page-note--info">
+          当前策略：<strong>{activeStrategy.name}</strong>，{activeStrategy.description}
+          策略筛选基于当前商品列表结果继续过滤。
+        </p>
+      ) : null}
+
       {loading ? <LoadingState>商品列表加载中...</LoadingState> : null}
 
       {!loading && error ? <ErrorState>{error}</ErrorState> : null}
 
-      {!loading && !error && products.length === 0 ? (
+      {!loading && !error && displayProducts.length === 0 ? (
         <EmptyState>
-          没有找到符合条件的商品，请尝试更换关键词、类目、利润率或排序条件。
+          {activeStrategy
+            ? '当前策略下没有找到符合条件的商品，请清除策略或调整关键词、类目、利润率等筛选条件。'
+            : '没有找到符合条件的商品，请尝试更换关键词、类目、利润率或排序条件。'}
         </EmptyState>
       ) : null}
 
-      {!loading && !error && products.length > 0 ? <ProductGrid products={products} /> : null}
+      {!loading && !error && displayProducts.length > 0 ? (
+        <ProductGrid products={displayProducts} />
+      ) : null}
     </section>
   )
 }

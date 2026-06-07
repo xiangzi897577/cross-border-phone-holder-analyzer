@@ -396,11 +396,14 @@
 .analysis-section,
 .analysis-page__summary-item,
 .product-filters,
+.strategy-filter,
 .product-card,
 .favorite-card,
+.candidate-compare,
 .detail-page__image-panel,
 .detail-page__summary,
-.detail-page__section {
+.detail-page__section,
+.product-report {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   box-shadow: var(--shadow-sm);
@@ -478,6 +481,99 @@
   flex: 1 1 440px;
 }
 
+.strategy-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+}
+
+.strategy-filter__header,
+.candidate-compare__header,
+.product-report__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.strategy-filter__eyebrow,
+.candidate-compare__eyebrow,
+.product-report__eyebrow {
+  margin: 0 0 6px;
+  color: var(--color-primary);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.strategy-filter__title,
+.candidate-compare__title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.08rem;
+}
+
+.strategy-filter__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+
+.strategy-filter__button {
+  display: flex;
+  min-height: 112px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+  color: var(--color-text-soft);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition),
+    background-color var(--transition);
+}
+
+.strategy-filter__button strong {
+  color: var(--color-text);
+  font-size: 0.96rem;
+}
+
+.strategy-filter__button span,
+.strategy-filter__active span {
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+  line-height: 1.62;
+}
+
+.strategy-filter__button:hover,
+.strategy-filter__button--active {
+  transform: translateY(-1px);
+  border-color: var(--color-primary-bright);
+  background: var(--color-primary-soft);
+  box-shadow: 0 12px 24px rgba(15, 118, 110, 0.1);
+}
+
+.strategy-filter__active {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 14px;
+  border-left: 4px solid var(--color-primary-bright);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+}
+
+.strategy-filter__active strong {
+  color: var(--color-primary);
+}
+
 .search-input {
   display: flex;
   flex-wrap: wrap;
@@ -519,6 +615,7 @@
 
 .search-input__button,
 .product-filters__reset-button,
+.strategy-filter__clear-button,
 .product-card__favorite-button,
 .detail-page__favorite-button,
 .favorite-card__remove-button {
@@ -556,7 +653,8 @@
 }
 
 .search-input__button--secondary,
-.product-filters__reset-button {
+.product-filters__reset-button,
+.strategy-filter__clear-button {
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface-soft);
   color: #334155;
@@ -564,7 +662,8 @@
 }
 
 .search-input__button--secondary:hover,
-.product-filters__reset-button:hover {
+.product-filters__reset-button:hover,
+.strategy-filter__clear-button:hover {
   transform: translateY(-1px);
   border-color: var(--color-primary-bright);
   color: var(--color-primary);
@@ -1061,8 +1160,122 @@
 
 .favorite-card__actions {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.favorite-card__compare-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 9px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+  color: var(--color-text-soft);
+  font-size: 0.86rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.favorite-card__compare-control input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.favorite-card__compare-control:has(input:checked) {
+  border-color: var(--color-primary-bright);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.candidate-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+}
+
+.candidate-compare__count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: var(--radius-md);
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.candidate-compare__hint,
+.candidate-compare__message {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  line-height: 1.65;
+}
+
+.candidate-compare__hint {
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+}
+
+.candidate-compare__message {
+  background: var(--color-warning-soft);
+  color: #c2410c;
+  font-weight: 800;
+}
+
+.candidate-compare__table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.candidate-compare__table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.candidate-compare__table th,
+.candidate-compare__table td {
+  padding: 12px 13px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.candidate-compare__table thead th,
+.candidate-compare__table tbody th {
+  background: var(--color-surface-soft);
+  color: var(--color-text);
+  font-weight: 900;
+}
+
+.candidate-compare__table tr:last-child th,
+.candidate-compare__table tr:last-child td {
+  border-bottom: 0;
+}
+
+.candidate-compare__cell--profit,
+.candidate-compare__cell--score {
+  color: var(--color-profit);
+  font-weight: 900;
+}
+
+.candidate-compare__cell--competition {
+  color: var(--color-blue);
+  font-weight: 900;
 }
 
 .detail-page {
@@ -1284,6 +1497,71 @@
   padding-left: 20px;
   color: #334155;
   line-height: 1.8;
+}
+
+.product-report {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.product-report__title {
+  margin-bottom: 0;
+}
+
+.product-report__source {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: var(--radius-md);
+  background: var(--color-profit-soft);
+  color: var(--color-profit);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.product-report__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-report__error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-warning-soft);
+  color: #c2410c;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.product-report__content {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+  color: var(--color-text-soft);
+  line-height: 1.75;
+}
+
+.product-report__content h2,
+.product-report__content h3 {
+  color: var(--color-text);
+  line-height: 1.4;
+}
+
+.product-report__content h2 {
+  margin: 0 0 14px;
+  font-size: 1.2rem;
+}
+
+.product-report__content h3 {
+  margin: 18px 0 8px;
+  font-size: 1rem;
 }
 
 .analysis-page {
@@ -1911,6 +2189,8 @@
   .sidebar,
   .top-header,
   .dashboard-layout__page,
+  .strategy-filter,
+  .candidate-compare,
   .detail-page__summary,
   .detail-page__section {
     border-radius: var(--radius-lg);
@@ -1919,6 +2199,8 @@
   .sidebar,
   .top-header,
   .dashboard-layout__page,
+  .strategy-filter,
+  .candidate-compare,
   .detail-page__summary,
   .detail-page__section {
     padding: 18px;
@@ -1984,7 +2266,20 @@
     justify-content: stretch;
   }
 
+  .favorite-card__compare-control,
   .favorite-card__remove-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .strategy-filter__header,
+  .candidate-compare__header,
+  .product-report__header {
+    flex-direction: column;
+  }
+
+  .strategy-filter__clear-button,
+  .product-report__actions .detail-page__favorite-button {
     width: 100%;
   }
 

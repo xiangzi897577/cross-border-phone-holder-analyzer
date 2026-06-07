@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import CandidateCompareTable from '../components/CandidateCompareTable.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import ErrorState from '../components/common/ErrorState.jsx'
 import LoadingState from '../components/common/LoadingState.jsx'
@@ -12,7 +13,15 @@ import {
   getRiskLevelText,
 } from '../utils/product'
 
-function FavoriteProductItem({ product, removingProductId, onRemove }) {
+const MAX_COMPARE_PRODUCTS = 4
+
+function FavoriteProductItem({
+  product,
+  removingProductId,
+  selectedForCompare,
+  onCompareToggle,
+  onRemove,
+}) {
   const [imageLoadError, setImageLoadError] = useState(false)
   const hasProductId = product?.id !== undefined && product?.id !== null && product?.id !== ''
   const isRemoving = hasProductId && removingProductId === product.id
@@ -90,12 +99,22 @@ function FavoriteProductItem({ product, removingProductId, onRemove }) {
           </div>
 
           <span className="favorite-card__detail-hint">
-            {hasProductId ? `查看商品 #${product.id} 详情` : '缺少商品 id'}
+            {hasProductId ? '查看商品详情' : '缺少商品 id'}
           </span>
         </div>
       </Link>
 
       <div className="favorite-card__actions">
+        <label className="favorite-card__compare-control">
+          <input
+            type="checkbox"
+            checked={selectedForCompare}
+            disabled={!hasProductId || isRemoving}
+            onChange={() => onCompareToggle(product)}
+          />
+          <span>{selectedForCompare ? '已加入对比' : '加入对比'}</span>
+        </label>
+
         <button
           className="favorite-card__remove-button"
           type="button"
@@ -115,6 +134,8 @@ function FavoritesPage() {
   const [error, setError] = useState('')
   const [removeError, setRemoveError] = useState('')
   const [removingProductId, setRemovingProductId] = useState(null)
+  const [selectedProductIds, setSelectedProductIds] = useState([])
+  const [compareMessage, setCompareMessage] = useState('')
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -124,6 +145,8 @@ function FavoritesPage() {
       setError('')
       setRemoveError('')
       setFavorites([])
+      setSelectedProductIds([])
+      setCompareMessage('')
 
       try {
         const favoritesData = await getFavorites({ signal: abortController.signal })
@@ -159,6 +182,9 @@ function FavoritesPage() {
       setFavorites((currentFavorites) =>
         currentFavorites.filter((favoriteProduct) => favoriteProduct.id !== product.id),
       )
+      setSelectedProductIds((currentIds) =>
+        currentIds.filter((selectedProductId) => selectedProductId !== product.id),
+      )
     } catch (requestError) {
       setRemoveError(requestError.message || '取消收藏失败')
     } finally {
@@ -166,7 +192,29 @@ function FavoritesPage() {
     }
   }
 
+  function handleCompareToggle(product) {
+    if (!product?.id) {
+      return
+    }
+
+    setSelectedProductIds((currentIds) => {
+      if (currentIds.includes(product.id)) {
+        setCompareMessage('')
+        return currentIds.filter((selectedProductId) => selectedProductId !== product.id)
+      }
+
+      if (currentIds.length >= MAX_COMPARE_PRODUCTS) {
+        setCompareMessage('最多只能选择 4 个候选商品进行对比。')
+        return currentIds
+      }
+
+      setCompareMessage('')
+      return [...currentIds, product.id]
+    })
+  }
+
   const hasFavorites = favorites.length > 0
+  const selectedProducts = favorites.filter((product) => selectedProductIds.includes(product.id))
 
   return (
     <section className="page favorites-page">
@@ -185,7 +233,7 @@ function FavoritesPage() {
       {!loading && !error && hasFavorites ? (
         <>
           <p className="page-note page-note--info">
-            当前候选池共有 <strong>{favorites.length}</strong> 件商品，点击商品内容可进入详情页。
+            当前候选池共有 <strong>{favorites.length}</strong> 件商品，点击商品内容可进入详情页，可选择 2-4 件进行横向对比。
           </p>
 
           <div className="favorites-page__list">
@@ -194,10 +242,30 @@ function FavoritesPage() {
                 key={product.id ?? product.productName}
                 product={product}
                 removingProductId={removingProductId}
+                selectedForCompare={selectedProductIds.includes(product.id)}
+                onCompareToggle={handleCompareToggle}
                 onRemove={handleRemoveFavorite}
               />
             ))}
           </div>
+
+          <section className="candidate-compare">
+            <div className="candidate-compare__header">
+              <div>
+                <p className="candidate-compare__eyebrow">Candidate Comparison</p>
+                <h3 className="candidate-compare__title">候选商品横向对比</h3>
+              </div>
+              <span className="candidate-compare__count">
+                已选择 {selectedProducts.length}/{MAX_COMPARE_PRODUCTS}
+              </span>
+            </div>
+
+            {compareMessage ? (
+              <p className="candidate-compare__message">{compareMessage}</p>
+            ) : null}
+
+            <CandidateCompareTable products={selectedProducts} />
+          </section>
         </>
       ) : null}
     </section>

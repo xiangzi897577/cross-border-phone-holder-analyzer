@@ -23,6 +23,7 @@ app.get('/', (req, res) => {
       'POST /api/favorites',
       'DELETE /api/favorites/:id',
       'POST /api/ai/chat',
+      'POST /api/ai/product-report',
     ],
   })
 })
@@ -53,6 +54,7 @@ app.use((req, res) => {
       'POST /api/favorites',
       'DELETE /api/favorites/:id',
       'POST /api/ai/chat',
+      'POST /api/ai/product-report',
     ],
   })
 })

@@ -5,6 +5,10 @@ import {
   generateSelectionAdvice,
 } from '../services/aiProviderService.js'
 import { buildProductContext } from '../services/productContextService.js'
+import { buildProductReportMessages } from '../services/productReportService.js'
+import { parsePositiveInteger } from '../utils/number.js'
+import { enrichProductMetrics } from '../utils/productMetrics.js'
+import { readProductById } from '../utils/productStore.js'
 
 const router = express.Router()
 const activeAiClientRequests = new Map()
@@ -402,6 +406,69 @@ router.post('/chat', async (req, res) => {
     }
 
     console.error('AI service error:', {
+      code: error?.code || 'unknown_error',
+      statusCode: error?.statusCode || 500,
+    })
+
+    return sendAiError(res, 502, AI_TEMPORARY_FAILURE_MESSAGE)
+  } finally {
+    releaseAiRequest(clientKey)
+  }
+})
+
+router.post('/product-report', async (req, res) => {
+  const productId = parsePositiveInteger(req.body?.productId)
+
+  if (productId === null) {
+    return sendAiError(res, 400, 'productId 必须是有效的正整数。')
+  }
+
+  const clientKey = `${getAiClientKey(req)}:product-report`
+
+  if (!acquireAiRequest(clientKey)) {
+    return sendAiError(res, 429, '当前已有 AI 报告生成中，请等待上一次请求完成。')
+  }
+
+  try {
+    const product = await readProductById(productId)
+
+    if (!product) {
+      return sendAiError(res, 404, '商品不存在，无法生成 AI 选品报告。')
+    }
+
+    const enrichedProduct = enrichProductMetrics(product)
+    const result = await generateSelectionAdvice(buildProductReportMessages(enrichedProduct))
+    console.info('AI product report completed:', {
+      productId,
+      provider: result.provider,
+      model: result.model,
+    })
+
+    return res.json({
+      success: true,
+      data: {
+        report: result.reply,
+        provider: result.provider,
+        model: result.model,
+      },
+    })
+  } catch (error) {
+    if (error instanceof AiProviderServiceError) {
+      const statusCode = getAiErrorStatusCode(error)
+      console.error('AI product report service error:', {
+        productId,
+        provider: error.provider,
+        model: error.model,
+        code: error.code,
+        statusCode,
+        attempts: error.attempts,
+      })
+
+      return sendAiError(res, statusCode, getAiErrorMessage(error))
+    }
+
+    console.error('AI product report error:', {
+      productId,
       code: error?.code || 'unknown_error',
       statusCode: error?.statusCode || 500,
     })
