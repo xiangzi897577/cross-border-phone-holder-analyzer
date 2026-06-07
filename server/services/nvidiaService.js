@@ -445,9 +445,12 @@ export async function chatWithNvidia(messages) {
         statusCode: serviceError.statusCode,
       })
 
-      if (serviceError.statusCode === 429 ||
-        serviceError.statusCode >= 500 ||
-        serviceError.code === 'request_timeout') {
+      if (
+        serviceError.code !== 'empty_reply' &&
+        (serviceError.statusCode === 429 ||
+          serviceError.statusCode >= 500 ||
+          serviceError.code === 'request_timeout')
+      ) {
         setModelCooldown(model)
       }
 

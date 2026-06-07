@@ -1,10 +1,10 @@
 import {
-  generateSelectionAdvice as generateNvidiaSelectionAdvice,
+  chatWithNvidia,
   NVIDIA_SERVICE_LIMITS,
   NvidiaServiceError,
 } from './nvidiaService.js'
 import {
-  generateSelectionAdvice as generateZhipuSelectionAdvice,
+  chatWithZhipu,
   ZHIPU_SERVICE_LIMITS,
   ZhipuServiceError,
 } from './zhipuService.js'
@@ -74,14 +74,14 @@ function wrapProviderError(error, provider) {
   })
 }
 
-export async function generateSelectionAdvice(message) {
+export async function generateSelectionAdvice(messages) {
   const provider = getConfiguredProvider()
 
   try {
     const result =
       provider === 'nvidia'
-        ? await generateNvidiaSelectionAdvice(message)
-        : await generateZhipuSelectionAdvice(message)
+        ? await chatWithNvidia(messages)
+        : await chatWithZhipu(messages)
 
     return {
       ...result,

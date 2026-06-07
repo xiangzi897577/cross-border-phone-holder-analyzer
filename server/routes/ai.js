@@ -4,9 +4,14 @@ import {
   AI_SERVICE_LIMITS,
   generateSelectionAdvice,
 } from '../services/aiProviderService.js'
+import { buildProductContext } from '../services/productContextService.js'
 
 const router = express.Router()
 const activeAiClientRequests = new Map()
+const ALLOWED_CHAT_ROLES = new Set(['user', 'assistant'])
+const MAX_CHAT_MESSAGES = 6
+const MAX_PROMPT_ASSISTANT_CONTENT_LENGTH = 700
+const AI_TEMPORARY_FAILURE_MESSAGE = 'AI 服务暂时不可用，请稍后再试'
 const GREETING_MESSAGES = new Set([
   'hello',
   'hi',
@@ -20,10 +25,16 @@ const GREETING_MESSAGES = new Set([
 const GREETING_REPLY =
   '你好，我是 AI 选品助手。你可以问我：哪些手机支架适合优先加入候选池、某个商品有哪些风险、利润率和竞争度应该怎么判断。'
 
-function getTrimmedMessage(req) {
-  const message = req.body?.message
+function getClientId(req) {
+  return req.get('x-client-id')?.trim() || ''
+}
 
-  return typeof message === 'string' ? message.trim() : ''
+function getLatestUserMessage(messages) {
+  const latestUserMessage = [...messages].reverse().find((message) => {
+    return message.role === 'user'
+  })
+
+  return latestUserMessage?.content || ''
 }
 
 function isGreetingMessage(message) {
@@ -43,7 +54,7 @@ function sendAiError(res, statusCode, message) {
 }
 
 function getAiClientKey(req) {
-  const clientId = req.get('x-client-id')?.trim()
+  const clientId = getClientId(req)
 
   if (clientId) {
     return `client:${clientId}`
@@ -56,6 +67,160 @@ function getAiClientKey(req) {
   }
 
   return `ip:${req.ip || req.socket?.remoteAddress || 'anonymous'}`
+}
+
+function validateChatMessages(rawMessages) {
+  if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
+    return {
+      error: 'messages 必须是非空数组。',
+    }
+  }
+
+  const messages = []
+
+  for (const rawMessage of rawMessages) {
+    if (!rawMessage || typeof rawMessage !== 'object' || Array.isArray(rawMessage)) {
+      return {
+        error: 'messages 中每条消息必须是对象。',
+      }
+    }
+
+    if (!ALLOWED_CHAT_ROLES.has(rawMessage.role)) {
+      return {
+        error: 'messages 中每条消息的 role 只能是 user 或 assistant。',
+      }
+    }
+
+    const content = typeof rawMessage.content === 'string' ? rawMessage.content.trim() : ''
+
+    if (!content) {
+      return {
+        error: 'messages 中每条消息的 content 必须是非空字符串。',
+      }
+    }
+
+    if (rawMessage.role === 'user' && content.length > AI_SERVICE_LIMITS.maxUserMessageLength) {
+      return {
+        error: `用户消息不能超过 ${AI_SERVICE_LIMITS.maxUserMessageLength} 个字符。`,
+      }
+    }
+
+    messages.push({
+      role: rawMessage.role,
+      content,
+    })
+  }
+
+  if (!messages.some((message) => message.role === 'user')) {
+    return {
+      error: 'messages 中至少需要包含一条 user 消息。',
+    }
+  }
+
+  const recentMessages = messages.slice(-MAX_CHAT_MESSAGES)
+
+  if (!recentMessages.some((message) => message.role === 'user')) {
+    return {
+      error: '最近的 messages 中至少需要包含一条 user 消息。',
+    }
+  }
+
+  return {
+    messages: recentMessages,
+  }
+}
+
+function buildSystemPrompt(productContext) {
+  return `
+你是一位有经验的跨境电商手机支架选品分析师。回答要围绕利润率、销量、评分、竞争指数、物流成本、推荐评分、风险因素和新手卖家策略展开，尽量具体、清晰、可执行。
+你可以使用 Markdown 排版；默认优先使用“结论 + 2-4 条要点 + 建议”的短段落和列表格式，只有在确实适合横向对比时才使用表格。
+
+以下是当前平台中的商品数据，请你只能基于这些商品数据进行分析，不要编造不存在的商品。
+如果商品数据不足以回答，请明确说明“当前商品数据不足以判断”，不要凭空补充。
+回答时要优先给出推荐理由，例如利润率、销量、评分、竞争指数、物流成本、推荐评分等。
+
+以下是当前用户候选池中的商品，请优先基于候选池商品回答与“我的候选池”“我收藏的商品”“刚才收藏的产品”相关的问题。
+如果用户问的是全平台推荐，则可以结合平台商品上下文回答。
+不要编造候选池中不存在的商品。
+如果用户问候选池但候选池为空，请明确说明“当前候选池为空”。
+
+${productContext.platformContextText}
+
+${productContext.favoriteContextText}
+
+除非用户要求详细分析，否则回答控制在 150 字以内。
+`.trim()
+}
+
+function getPromptContentLength(systemPrompt, messages) {
+  return messages.reduce((sum, message) => sum + message.content.length, systemPrompt.length)
+}
+
+function getTrimmedPromptMessage(message) {
+  if (
+    message.role === 'assistant' &&
+    message.content.length > MAX_PROMPT_ASSISTANT_CONTENT_LENGTH
+  ) {
+    return {
+      ...message,
+      content: `${message.content.slice(0, MAX_PROMPT_ASSISTANT_CONTENT_LENGTH)}...`,
+    }
+  }
+
+  return message
+}
+
+function fitMessagesToPromptBudget(systemPrompt, messages) {
+  const maxPromptLength = AI_SERVICE_LIMITS.maxPromptContentLength
+  const fittedMessages = messages.map((message) => getTrimmedPromptMessage(message))
+  let latestUserMessageIndex = fittedMessages
+    .map((message) => message.role)
+    .lastIndexOf('user')
+
+  while (
+    getPromptContentLength(systemPrompt, fittedMessages) > maxPromptLength &&
+    fittedMessages.length > 1
+  ) {
+    const removableMessageIndex = fittedMessages.findIndex((_, index) => {
+      return index !== latestUserMessageIndex
+    })
+
+    if (removableMessageIndex === -1) {
+      break
+    }
+
+    fittedMessages.splice(removableMessageIndex, 1)
+
+    if (removableMessageIndex < latestUserMessageIndex) {
+      latestUserMessageIndex -= 1
+    }
+  }
+
+  const totalPromptLength = getPromptContentLength(systemPrompt, fittedMessages)
+
+  if (totalPromptLength <= maxPromptLength || latestUserMessageIndex === -1) {
+    return fittedMessages
+  }
+
+  const nonLatestUserLength = fittedMessages.reduce((sum, message, index) => {
+    return index === latestUserMessageIndex ? sum : sum + message.content.length
+  }, systemPrompt.length)
+  const remainingUserContentLength = Math.max(0, maxPromptLength - nonLatestUserLength)
+  const latestUserMessage = fittedMessages[latestUserMessageIndex]
+
+  if (latestUserMessage.content.length <= remainingUserContentLength) {
+    return fittedMessages
+  }
+
+  fittedMessages[latestUserMessageIndex] = {
+    ...latestUserMessage,
+    content:
+      remainingUserContentLength > 3
+        ? `${latestUserMessage.content.slice(0, remainingUserContentLength - 3)}...`
+        : latestUserMessage.content.slice(0, remainingUserContentLength),
+  }
+
+  return fittedMessages
 }
 
 function acquireAiRequest(clientKey) {
@@ -137,8 +302,14 @@ function getAiErrorMessage(error) {
     return 'AI 模型当前限流，请稍后再试。'
   }
 
-  if (error.code === 'request_timeout') {
-    return 'AI 响应超时，请稍后再试。'
+  if (
+    error.code === 'request_timeout' ||
+    error.code === 'empty_reply' ||
+    error.code === 'all_models_failed' ||
+    error.code === 'service_unavailable' ||
+    error.code === 'request_failed'
+  ) {
+    return AI_TEMPORARY_FAILURE_MESSAGE
   }
 
   if (error.code === 'invalid_provider') {
@@ -153,39 +324,32 @@ function getAiErrorMessage(error) {
     return 'AI 请求参数错误，请检查模型 ID 和请求参数。'
   }
 
-  if (error.code === 'all_models_failed') {
-    return '所有备用 NVIDIA 模型暂时不可用，请稍后再试。'
-  }
-
   if (error.statusCode >= 500 && error.statusCode <= 504) {
-    return 'AI 服务暂时异常，请稍后再试。'
+    return AI_TEMPORARY_FAILURE_MESSAGE
   }
 
   return error.message || 'AI 选品助手请求失败'
 }
 
 router.post('/chat', async (req, res) => {
-  const message = getTrimmedMessage(req)
+  const validationResult = validateChatMessages(req.body?.messages)
 
-  if (!message) {
-    return sendAiError(res, 400, 'message 必须是非空字符串。')
+  if (validationResult.error) {
+    return sendAiError(res, 400, validationResult.error)
   }
 
-  if (isGreetingMessage(message)) {
+  const messages = validationResult.messages
+  const latestUserMessage = getLatestUserMessage(messages)
+
+  if (isGreetingMessage(latestUserMessage)) {
     return res.json({
       success: true,
       data: {
         reply: GREETING_REPLY,
+        provider: 'local',
+        model: 'greeting',
       },
     })
-  }
-
-  if (message.length > AI_SERVICE_LIMITS.maxUserMessageLength) {
-    return sendAiError(
-      res,
-      400,
-      `message 不能超过 ${AI_SERVICE_LIMITS.maxUserMessageLength} 个字符。`,
-    )
   }
 
   const clientKey = getAiClientKey(req)
@@ -195,16 +359,32 @@ router.post('/chat', async (req, res) => {
   }
 
   try {
-    const result = await generateSelectionAdvice(message)
+    const productContext = await buildProductContext({
+      messages,
+      clientId: getClientId(req),
+    })
+    const systemPrompt = buildSystemPrompt(productContext)
+    const promptMessages = fitMessagesToPromptBudget(systemPrompt, messages)
+    const result = await generateSelectionAdvice([
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      ...promptMessages,
+    ])
     console.info('AI chat completed:', {
       provider: result.provider,
       model: result.model,
+      platformContextProductCount: productContext.platformContextProductCount,
+      favoriteContextProductCount: productContext.favoriteContextProductCount,
     })
 
     return res.json({
       success: true,
       data: {
         reply: result.reply,
+        provider: result.provider,
+        model: result.model,
       },
     })
   } catch (error) {
@@ -226,7 +406,7 @@ router.post('/chat', async (req, res) => {
       statusCode: error?.statusCode || 500,
     })
 
-    return sendAiError(res, 502, 'AI 服务暂时不可用，请稍后再试。')
+    return sendAiError(res, 502, AI_TEMPORARY_FAILURE_MESSAGE)
   } finally {
     releaseAiRequest(clientKey)
   }

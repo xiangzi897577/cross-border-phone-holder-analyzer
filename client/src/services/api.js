@@ -2,6 +2,10 @@ const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:
 const API_BASE_URL = normalizeBaseUrl(RAW_API_BASE_URL)
 const BACKEND_CONNECTION_ERROR = `无法连接到后端服务，请确认 ${API_BASE_URL} 已启动或配置正确`
 const CLIENT_ID_STORAGE_KEY = 'phone_holder_analyzer_client_id'
+const MAX_AI_REQUEST_MESSAGES = 6
+const MAX_AI_REQUEST_ASSISTANT_CONTENT_LENGTH = 700
+const AI_CHAT_REQUEST_TIMEOUT_MS = 45000
+const AI_TEMPORARY_ERROR_MESSAGE = 'AI 服务暂时不可用，请稍后再试'
 
 let memoryClientId = ''
 
@@ -212,42 +216,102 @@ export async function getDashboard(options = {}) {
   return dashboard
 }
 
-export async function chatWithAi(message, options = {}) {
-  const normalizedMessage = String(message || '').trim()
-
-  if (!normalizedMessage) {
+function normalizeAiMessages(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) {
     throw new Error('请输入要咨询的问题')
   }
 
-  const chatResult = await requestJson(
-    '/api/ai/chat',
-    {
-      default: 'AI 选品助手请求失败',
-    },
-    {
-      ...options,
-      method: 'POST',
-      headers: createHeaders(withClientIdHeader(options), {
-        'Content-Type': 'application/json',
-      }),
-      body: JSON.stringify({ message: normalizedMessage }),
-    },
-  )
+  return messages.slice(-MAX_AI_REQUEST_MESSAGES).map((message) => {
+    const role = message?.role
+    let content = typeof message?.content === 'string' ? message.content.trim() : ''
+
+    if (role !== 'user' && role !== 'assistant') {
+      throw new Error('AI 消息角色格式不正确')
+    }
+
+    if (!content) {
+      throw new Error('请输入要咨询的问题')
+    }
+
+    if (role === 'assistant' && content.length > MAX_AI_REQUEST_ASSISTANT_CONTENT_LENGTH) {
+      content = `${content.slice(0, MAX_AI_REQUEST_ASSISTANT_CONTENT_LENGTH)}...`
+    }
+
+    return {
+      role,
+      content,
+    }
+  })
+}
+
+export async function chatWithAi(messages, options = {}) {
+  const normalizedMessages = normalizeAiMessages(messages)
+  const controller =
+    !options.signal && typeof AbortController !== 'undefined' ? new AbortController() : null
+  const timeout = controller
+    ? setTimeout(() => controller.abort(), AI_CHAT_REQUEST_TIMEOUT_MS)
+    : null
+
+  if (!normalizedMessages.some((message) => message.role === 'user')) {
+    throw new Error('请输入要咨询的问题')
+  }
+
+  let chatResult
+
+  try {
+    chatResult = await requestJson(
+      '/api/ai/chat',
+      {
+        default: AI_TEMPORARY_ERROR_MESSAGE,
+      },
+      {
+        ...options,
+        method: 'POST',
+        signal: options.signal || controller?.signal,
+        headers: createHeaders(withClientIdHeader(options), {
+          'Content-Type': 'application/json',
+        }),
+        body: JSON.stringify({ messages: normalizedMessages }),
+      },
+    )
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error(AI_TEMPORARY_ERROR_MESSAGE, { cause: error })
+    }
+
+    throw error
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+  }
 
   if (typeof chatResult === 'string') {
-    return chatResult
+    return {
+      reply: chatResult,
+    }
   }
 
   if (typeof chatResult?.data?.reply === 'string') {
-    return chatResult.data.reply
+    return {
+      reply: chatResult.data.reply,
+      provider: chatResult.data.provider,
+      model: chatResult.data.model,
+    }
   }
 
   if (typeof chatResult?.reply === 'string') {
-    return chatResult.reply
+    return {
+      reply: chatResult.reply,
+      provider: chatResult.provider,
+      model: chatResult.model,
+    }
   }
 
   if (typeof chatResult?.data === 'string') {
-    return chatResult.data
+    return {
+      reply: chatResult.data,
+    }
   }
 
   throw new Error('AI 回复数据格式不正确')

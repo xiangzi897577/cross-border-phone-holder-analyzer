@@ -198,13 +198,23 @@ x-client-id: 当前浏览器匿名 client_id
 
 ### `POST /api/ai/chat`
 
-调用后端封装的 AI 服务，返回单轮 AI 选品建议。当前支持通过 `AI_PROVIDER` 在 `zhipu` 和 `nvidia` 之间切换。
+调用后端封装的 AI 服务，返回基于 Supabase 商品数据的多轮 AI 选品建议。当前支持通过 `AI_PROVIDER` 在 `zhipu` 和 `nvidia` 之间切换。
+
+可选请求头：
+
+```txt
+x-client-id: 当前浏览器匿名 client_id，用于读取当前用户候选池商品上下文
+```
 
 请求体示例：
 
 ```json
 {
-  "message": "帮我推荐适合新手的手机支架"
+  "messages": [
+    { "role": "user", "content": "帮我推荐适合新手的产品" },
+    { "role": "assistant", "content": "建议优先看可折叠桌面手机支架..." },
+    { "role": "user", "content": "那物流成本低的呢？" }
+  ]
 }
 ```
 
@@ -214,7 +224,9 @@ x-client-id: 当前浏览器匿名 client_id
 {
   "success": true,
   "data": {
-    "reply": "可以优先关注轻小件、低物流成本、评分稳定且竞争指数较低的手机支架..."
+    "reply": "可以优先关注物流成本低、评分稳定且竞争指数较低的手机支架...",
+    "provider": "nvidia",
+    "model": "deepseek-ai/deepseek-v4-flash"
   }
 }
 ```
@@ -448,7 +460,7 @@ https://cross-border-phone-holder-api.vercel.app/api/ai/chat
 ```
 
 `/api/favorites` 需要 `x-client-id` 请求头，推荐通过前端页面的收藏和取消收藏流程验证，同时在 Supabase Table Editor 中确认 `favorites` 表记录新增和删除。
-`/api/ai/chat` 是 `POST` 接口，需要在后端 Vercel 项目中配置 `ZHIPU_API_KEY` 后再验证。
+`/api/ai/chat` 是 `POST` 接口，需要在后端 Vercel 项目中按 `AI_PROVIDER` 配置 `NVIDIA_API_KEY` 或 `ZHIPU_API_KEY` 后再验证。
 
 ---
 

@@ -1,5 +1,60 @@
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { chatWithAi } from '../services/api'
+
+const MAX_AI_REQUEST_MESSAGES = 6
+const MAX_AI_REQUEST_ASSISTANT_CONTENT_LENGTH = 700
+const AI_TEMPORARY_ERROR_MESSAGE = 'AI 服务暂时不可用，请稍后再试'
+
+function getMessagesForAiRequest(messages) {
+  return messages
+    .filter((message) => !message.isError)
+    .slice(-MAX_AI_REQUEST_MESSAGES)
+    .map((message) => {
+      const content =
+        message.role === 'assistant' &&
+        message.content.length > MAX_AI_REQUEST_ASSISTANT_CONTENT_LENGTH
+          ? `${message.content.slice(0, MAX_AI_REQUEST_ASSISTANT_CONTENT_LENGTH)}...`
+          : message.content
+
+      return {
+        role: message.role,
+        content,
+      }
+    })
+}
+
+const markdownComponents = {
+  table(props) {
+    const tableProps = { ...props }
+    delete tableProps.node
+
+    return (
+      <div className="ai-chat-widget__markdown-table-wrapper">
+        <table {...tableProps} />
+      </div>
+    )
+  },
+}
+
+function AiMessageContent({ message }) {
+  if (message.role !== 'assistant' || message.isError) {
+    return (
+      <p className="ai-chat-widget__message-content ai-chat-widget__message-content--plain">
+        {message.content}
+      </p>
+    )
+  }
+
+  return (
+    <div className="ai-chat-widget__message-content ai-chat-widget__message-content--markdown">
+      <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>
+        {message.content}
+      </ReactMarkdown>
+    </div>
+  )
+}
 
 function AiChatWidget() {
   const [isOpen, setIsOpen] = useState(false)
@@ -29,30 +84,41 @@ function AiChatWidget() {
 
     sendingRef.current = true
     const messageId = Date.now()
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      {
-        id: `user-${messageId}`,
-        role: 'user',
-        content: nextMessage,
-      },
-    ])
+    const userMessage = {
+      id: `user-${messageId}`,
+      role: 'user',
+      content: nextMessage,
+    }
+    const nextMessages = [...messages, userMessage]
+
+    setMessages(nextMessages)
     setInputValue('')
     setError('')
     setSending(true)
 
     try {
-      const reply = await chatWithAi(nextMessage)
+      const result = await chatWithAi(getMessagesForAiRequest(nextMessages))
       setMessages((currentMessages) => [
         ...currentMessages,
         {
           id: `assistant-${messageId}`,
           role: 'assistant',
-          content: reply || '暂时没有生成明确回复，请换个问题再试。',
+          content: result.reply || '暂时没有生成明确回复，请换个问题再试。',
         },
       ])
     } catch (requestError) {
-      setError(requestError.message || 'AI 选品助手请求失败')
+      const errorMessage = requestError.message || AI_TEMPORARY_ERROR_MESSAGE
+
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: `assistant-error-${messageId}`,
+          role: 'assistant',
+          content: errorMessage,
+          isError: true,
+        },
+      ])
+      setError(errorMessage)
     } finally {
       sendingRef.current = false
       setSending(false)
@@ -108,7 +174,7 @@ function AiChatWidget() {
                 <span className="ai-chat-widget__message-role">
                   {message.role === 'user' ? '你' : 'AI'}
                 </span>
-                <p className="ai-chat-widget__message-content">{message.content}</p>
+                <AiMessageContent message={message} />
               </div>
             ))}
 

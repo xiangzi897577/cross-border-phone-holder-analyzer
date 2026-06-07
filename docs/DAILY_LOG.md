@@ -2788,3 +2788,124 @@ ZHIPU_MODEL=glm-4.7-flash
 
 ### 是否更新 DAILY_LOG.md
 - 是，已更新 Day 40 记录。
+
+---
+
+## Day 41：轻量级 RAG 与动态商品知识库
+
+### 本次完成内容
+- 新增商品上下文服务，让 AI 每次请求时读取 Supabase `products` 表最新商品数据。
+- `/api/ai/chat` 从单轮 `message` 升级为多轮 `messages` 请求体。
+- 后端 prompt 明确区分“当前平台商品列表”和“当前用户候选池商品列表”。
+- AI 回答候选池相关问题时，会优先使用当前 `x-client-id` 对应的候选池商品上下文。
+- 前端 AI 聊天组件改为发送当前页面会话，不存数据库。
+
+### 修改了哪些文件
+- `server/services/productContextService.js`
+- `server/routes/ai.js`
+- `server/services/aiProviderService.js`
+- `client/src/services/api.js`
+- `client/src/components/AiChatWidget.jsx`
+- `README.md`
+- `docs/DAILY_LOG.md`
+
+### 关键实现说明
+- `productContextService` 复用 `readProducts()` 和 `enrichProductMetrics()`，避免重复维护 Supabase 字段映射和推荐评分逻辑。
+- 当前平台商品数量小于等于 20 时，全部商品都会进入平台商品上下文。
+- 平台商品数量超过 20 时，会结合用户问题和业务评分最多筛选 12 个商品。
+- 候选池商品数量小于等于 10 时全部进入候选池上下文，超过 10 时最多保留 10 个高优先级商品。
+- 大模型不直接访问数据库，只基于后端传入的商品上下文回答。
+
+### `/api/ai/chat` 当前请求体
+
+```json
+{
+  "messages": [
+    { "role": "user", "content": "帮我推荐适合新手的产品" },
+    { "role": "assistant", "content": "建议优先看可折叠桌面手机支架..." },
+    { "role": "user", "content": "那物流成本低的呢？" }
+  ]
+}
+```
+
+### 手动测试问题
+- 帮我推荐适合新手的产品
+- 推荐物流成本低的产品
+- 哪些产品利润率高但竞争低？
+- 刚才你推荐的产品里，哪个更适合新手？
+
+### 本地验证结果
+- `node --check server/services/productContextService.js` 通过。
+- `node --check server/routes/ai.js` 通过。
+- `node --check server/services/aiProviderService.js` 通过。
+- `client` 下执行 `npm run lint` 通过。
+- `client` 下执行 `npm run build` 通过。
+- 使用 `buildProductContext` 实际读取 Supabase，当前平台商品数量为 20，平台上下文商品数量为 20。
+- 使用本地 fake NVIDIA endpoint 验证合法多轮请求，确认 prompt 中包含平台商品上下文和候选池商品上下文，并返回 `reply/provider/model`。
+- 验证旧格式 `{ "message": "旧格式" }` 返回 400。
+- 验证非法 role 和空 content 返回 400。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 41 记录。
+
+---
+
+## Day 41 补充：AI 多轮对话稳定性优化
+
+### 本次完成内容
+- 前端继续显示完整聊天记录，但发送给后端时只保留最近 6 条有效消息。
+- 前端发送前会截短历史 assistant 长回答，避免连续对话后请求体持续膨胀。
+- AI 请求失败时会插入一条 AI 错误消息，并恢复发送按钮。
+- 前端 AI 请求增加 45 秒超时兜底，避免网络层长时间不返回时一直停在“正在分析...”。
+- 后端将历史消息限制为最近 6 条，并在调用模型前按 prompt 长度预算裁剪旧消息。
+- 模型超时、空回复、所有模型失败等临时错误统一返回“AI 服务暂时不可用，请稍后再试”。
+- NVIDIA `empty_reply` 不再触发模型 cooldown，减少后续请求连续失败的概率。
+
+### 修改了哪些文件
+- `client/src/components/AiChatWidget.jsx`
+- `client/src/services/api.js`
+- `server/routes/ai.js`
+- `server/services/nvidiaService.js`
+- `docs/DAILY_LOG.md`
+
+### 本地验证结果
+- `node --check server/routes/ai.js` 通过。
+- `node --check server/services/nvidiaService.js` 通过。
+- `node --check server/services/aiProviderService.js` 通过。
+- `client` 下执行 `npm run lint` 通过。
+- `client` 下执行 `npm run build` 通过。
+- 使用本地 fake NVIDIA endpoint 验证长历史请求，最终传给模型的是 `system + 最近 6 条消息`，prompt 长度被压到安全范围内。
+- 使用本地 fake NVIDIA endpoint 验证模型 500，接口返回 `{ success: false, message: "AI 服务暂时不可用，请稍后再试" }`。
+- 使用本地 fake NVIDIA endpoint 验证 `empty_reply` 连续请求，不再因 cooldown 跳过模型。
+
+### 是否更新 DAILY_LOG.md
+- 是，已更新 Day 41 稳定性优化记录。
+
+---
+
+## Day 41 补充：AI 回复 Markdown 渲染优化
+
+### 本次完成内容
+- AI 助手的 assistant 回复改为使用 `react-markdown` 渲染。
+- 接入 `remark-gfm`，支持 Markdown 表格、列表、加粗等常见格式。
+- 用户消息和错误消息仍保持纯文本显示，避免用户输入被当作 Markdown 解析。
+- 为 AI 回复中的段落、列表、加粗、代码和表格补充样式，表格支持横向滚动。
+- 后端 prompt 补充输出格式建议：默认使用短段落和列表，适合对比时再使用表格。
+
+### 修改了哪些文件
+- `client/src/components/AiChatWidget.jsx`
+- `client/src/App.css`
+- `client/package.json`
+- `client/package-lock.json`
+- `server/routes/ai.js`
+- `docs/DAILY_LOG.md`
+
+### 新增依赖
+- `react-markdown`
+- `remark-gfm`
+
+### 本地验证结果
+- `node --check server/routes/ai.js` 通过。
+- `client` 下执行 `npm run lint` 通过。
+- `client` 下执行 `npm run build` 通过。
+- Vite build 仍提示 chunk 体积超过 500 kB，这是构建警告，不影响本次 Markdown 渲染功能。
