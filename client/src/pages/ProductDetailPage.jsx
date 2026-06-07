@@ -3,7 +3,12 @@ import { Link, useParams } from 'react-router-dom'
 import ErrorState from '../components/common/ErrorState.jsx'
 import LoadingState from '../components/common/LoadingState.jsx'
 import MarkdownContent from '../components/MarkdownContent.jsx'
-import { addFavorite, generateAiProductReport, getProductById } from '../services/api'
+import {
+  addFavorite,
+  generateAiProductReport,
+  getCachedProductById,
+  getProductById,
+} from '../services/api'
 import {
   formatMoney,
   formatNumber,
@@ -66,7 +71,9 @@ function ProductDetailPage() {
     async function fetchProductDetail() {
       setLoading(true)
       setError('')
-      setProduct(null)
+      const cachedProduct = getCachedProductById(id)
+      setProduct(cachedProduct)
+      setLoading(!cachedProduct)
       setImageLoadError(false)
       setFavoriteMessage('')
       setFavoriteMessageType('')
@@ -82,7 +89,9 @@ function ProductDetailPage() {
         setProduct(productData)
       } catch (requestError) {
         if (requestError.name !== 'AbortError') {
-          setError(requestError.message || '获取商品详情失败')
+          if (!cachedProduct) {
+            setError(requestError.message || '获取商品详情失败')
+          }
         }
       } finally {
         if (!abortController.signal.aborted) {
@@ -177,7 +186,7 @@ function ProductDetailPage() {
         </div>
       ) : null}
 
-      {!loading && !error && product ? (
+      {!error && product ? (
         <>
           <div className="detail-page__hero">
             <div className="detail-page__image-panel">

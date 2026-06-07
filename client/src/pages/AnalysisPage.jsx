@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import EmptyState from '../components/common/EmptyState.jsx'
 import ErrorState from '../components/common/ErrorState.jsx'
 import LoadingState from '../components/common/LoadingState.jsx'
-import { getProducts } from '../services/api'
+import { getCachedProducts, getProducts } from '../services/api'
 import { formatPercent, formatScore } from '../utils/format'
 import { safeNumber } from '../utils/number'
 import {
@@ -132,25 +132,44 @@ function AnalysisSection({ title, description, products, cardType, emptyText }) 
   )
 }
 
+const ANALYSIS_RULES = [
+  {
+    title: '推荐评分',
+    description: '综合利润率、销量、评分、竞争度、物流成本和轻小件属性，判断商品是否值得优先跟进。',
+  },
+  {
+    title: '风险因素',
+    description: '根据利润偏低、竞争偏高、评分偏低、评论不足、物流偏高等信号，提示上架前需要复核的问题。',
+  },
+  {
+    title: '竞争度',
+    description: '用于识别同类商品压力，高推荐低竞争适合优先测款，高竞争商品需要更强差异化卖点。',
+  },
+]
+
 function AnalysisPage() {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
+  const cachedProducts = useMemo(() => getCachedProducts(), [])
+  const [products, setProducts] = useState(cachedProducts)
+  const [loading, setLoading] = useState(cachedProducts.length === 0)
   const [error, setError] = useState('')
 
   useEffect(() => {
     const abortController = new AbortController()
 
     async function fetchProducts() {
+      const hasExistingProducts = cachedProducts.length > 0
+
       setLoading(true)
       setError('')
-      setProducts([])
 
       try {
         const productsData = await getProducts({}, { signal: abortController.signal })
         setProducts(productsData)
       } catch (requestError) {
         if (requestError.name !== 'AbortError') {
-          setError(requestError.message || '获取选品分析数据失败')
+          if (!hasExistingProducts) {
+            setError(requestError.message || '获取选品分析数据失败')
+          }
         }
       } finally {
         if (!abortController.signal.aborted) {
@@ -164,7 +183,7 @@ function AnalysisPage() {
     return () => {
       abortController.abort()
     }
-  }, [])
+  }, [cachedProducts.length])
 
   const analysisGroups = useMemo(() => {
     const highPotentialProducts = sortByRecommendation(
@@ -221,7 +240,11 @@ function AnalysisPage() {
 
   return (
     <section className="page analysis-page">
-      {loading ? <LoadingState>选品分析数据加载中...</LoadingState> : null}
+      {loading && !hasProducts ? <LoadingState>选品分析数据加载中...</LoadingState> : null}
+
+      {loading && hasProducts ? (
+        <p className="page-note page-note--info">正在同步最新选品分析数据，当前结果可继续查看。</p>
+      ) : null}
 
       {!loading && error ? <ErrorState>{error}</ErrorState> : null}
 
@@ -229,7 +252,7 @@ function AnalysisPage() {
         <EmptyState>暂无商品数据，暂时无法生成选品分析。</EmptyState>
       ) : null}
 
-      {!loading && !error && hasProducts ? (
+      {!error && hasProducts ? (
         <>
           <div className="analysis-page__summary">
             <div className="analysis-page__summary-item analysis-page__summary-item--primary">
@@ -260,12 +283,27 @@ function AnalysisPage() {
           </div>
 
           <p className="page-note page-note--info">
-            当前分析维度覆盖推荐评分、利润率、竞争指数和风险因素数量，适合用于初筛后进一步核价、看评价和确认供应稳定性。
+            当前页面把商品池拆成机会款、风险款和低竞争高利润款，帮助完成“初筛 → 复核 → 候选跟进”的选品判断。
           </p>
+
+          <section className="analysis-rule-panel">
+            <div className="analysis-rule-panel__header">
+              <p className="analysis-rule-panel__eyebrow">Analysis Rules</p>
+              <h3 className="analysis-rule-panel__title">分析规则说明</h3>
+            </div>
+            <div className="analysis-rule-panel__grid">
+              {ANALYSIS_RULES.map((rule) => (
+                <article className="analysis-rule-panel__item" key={rule.title}>
+                  <strong>{rule.title}</strong>
+                  <p>{rule.description}</p>
+                </article>
+              ))}
+            </div>
+          </section>
 
           <AnalysisSection
             title="高潜力商品"
-            description="利润空间、竞争压力和推荐评分综合表现较好的候选商品。"
+            description="推荐分、利润率和竞争压力综合表现较好，适合作为下一批重点核价和供应商复核对象。"
             products={analysisGroups.highPotentialProducts}
             cardType="potential"
             emptyText="暂无符合高潜力规则的商品。"
@@ -273,7 +311,7 @@ function AnalysisPage() {
 
           <AnalysisSection
             title="高风险商品"
-            description="风险等级较高，或风险因素较多，需要优先确认售后、包装和竞争压力。"
+            description="风险等级较高或风险因素较多，建议先排查物流成本、评价质量、竞争强度和售后隐患。"
             products={analysisGroups.highRiskProducts}
             cardType="risk"
             emptyText="暂无符合高风险规则的商品。"
@@ -281,7 +319,7 @@ function AnalysisPage() {
 
           <AnalysisSection
             title="低竞争高利润商品"
-            description="竞争指数相对可控，同时利润率表现较好的重点观察对象。"
+            description="同时具备利润空间和较低竞争压力，是候选池对比和 AI 深度报告优先分析的机会款。"
             products={analysisGroups.lowCompetitionHighProfitProducts}
             cardType="opportunity"
             emptyText="暂无符合低竞争高利润规则的商品。"

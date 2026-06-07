@@ -69,8 +69,10 @@
 ### Dashboard 数据看板
 
 * 展示商品总数、平均利润率、高潜力商品数和风险商品数。
+* 展示当前商品池判断，输出优先跟进、竞争压力和风险排查结论。
 * 展示利润率排行柱状图。
 * 展示手机支架类型分布饼图。
+* 展示推荐分 vs 竞争度散点图，用于识别高推荐、低竞争的机会款。
 * 数据来自后端 `GET /api/dashboard`。
 
 ### 商品列表
@@ -514,7 +516,9 @@ https://cross-border-phone-holder-api.vercel.app/api/ai/chat
 * 实现商品搜索、类目筛选、利润率筛选和多维排序。
 * 封装商品利润测算、风险分析和推荐评分逻辑。
 * 使用候选池功能模拟真实选品过程中的商品收藏和跟进流程。
-* 使用 Recharts 实现利润率排行和类目分布图表。
+* 使用 Recharts 实现利润率排行、类目分布、推荐分 vs 竞争度等业务图表。
+* 优化 Dashboard 首屏业务定位和基础 SEO 页面元信息，提升线上演示完整度。
+* 针对接口慢和 Serverless 冷启动场景实现前端缓存与 stale-while-revalidate 体验，主要页面缓存命中时首个有意义内容可见时间可从约 4.6 秒降至 0.27-0.38 秒，测量口径见 `docs/PERFORMANCE_NOTES.md`。
 * 前端页面包含 Dashboard、Products、ProductDetail、Analysis、Favorites 等完整业务模块。
 * 后端接口结构清晰，支持商品列表、详情、Dashboard、候选池增删查。
 * 后端通过 Vercel Serverless 部署，前端通过 Vercel 静态站点部署，项目可通过公网访问。

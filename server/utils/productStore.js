@@ -7,6 +7,7 @@ import { mapProductRowToProduct } from './productMapper.js'
 const currentFilePath = fileURLToPath(import.meta.url)
 const currentDirPath = path.dirname(currentFilePath)
 const productsFilePath = path.join(currentDirPath, '..', 'data', 'products.json')
+const DEFAULT_PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000
 const PRODUCT_SELECT_COLUMNS = `
   id,
   product_name,
@@ -34,6 +35,27 @@ const PRODUCT_SELECT_COLUMNS = `
 export const INVALID_PRODUCTS_FORMAT_MESSAGE =
   'Products data format is invalid. Expected an array.'
 
+let cachedProducts = null
+let cachedProductsAt = 0
+
+function getProductsCacheTtlMs() {
+  const ttlMs = Number(process.env.PRODUCTS_CACHE_TTL_MS)
+
+  if (!Number.isFinite(ttlMs) || ttlMs < 0) {
+    return DEFAULT_PRODUCTS_CACHE_TTL_MS
+  }
+
+  return ttlMs
+}
+
+function isProductsCacheFresh() {
+  if (!Array.isArray(cachedProducts)) {
+    return false
+  }
+
+  return Date.now() - cachedProductsAt <= getProductsCacheTtlMs()
+}
+
 export async function readProductsFromJson() {
   const products = await readJsonFile(productsFilePath)
 
@@ -45,6 +67,10 @@ export async function readProductsFromJson() {
 }
 
 export async function readProducts() {
+  if (isProductsCacheFresh()) {
+    return cachedProducts
+  }
+
   const { data, error } = await supabase
     .from('products')
     .select(PRODUCT_SELECT_COLUMNS)
@@ -58,19 +84,14 @@ export async function readProducts() {
     throw new Error(INVALID_PRODUCTS_FORMAT_MESSAGE)
   }
 
-  return data.map((row) => mapProductRowToProduct(row))
+  cachedProducts = data.map((row) => mapProductRowToProduct(row))
+  cachedProductsAt = Date.now()
+
+  return cachedProducts
 }
 
 export async function readProductById(productId) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(PRODUCT_SELECT_COLUMNS)
-    .eq('id', productId)
-    .maybeSingle()
+  const products = await readProducts()
 
-  if (error) {
-    throw new Error(`Failed to read product from Supabase. ${error.message}`)
-  }
-
-  return data ? mapProductRowToProduct(data) : null
+  return products.find((product) => product.id === productId) || null
 }

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CandidateCompareTable from '../components/CandidateCompareTable.jsx'
 import EmptyState from '../components/common/EmptyState.jsx'
 import ErrorState from '../components/common/ErrorState.jsx'
 import LoadingState from '../components/common/LoadingState.jsx'
-import { getFavorites, removeFavorite } from '../services/api'
+import { getCachedFavorites, getFavorites, removeFavorite } from '../services/api'
 import { formatMoney, formatPercent, formatRating, formatScore } from '../utils/format'
 import {
   getProductCategory,
@@ -129,8 +129,9 @@ function FavoriteProductItem({
 }
 
 function FavoritesPage() {
-  const [favorites, setFavorites] = useState([])
-  const [loading, setLoading] = useState(true)
+  const cachedFavorites = useMemo(() => getCachedFavorites(), [])
+  const [favorites, setFavorites] = useState(cachedFavorites)
+  const [loading, setLoading] = useState(cachedFavorites.length === 0)
   const [error, setError] = useState('')
   const [removeError, setRemoveError] = useState('')
   const [removingProductId, setRemovingProductId] = useState(null)
@@ -141,11 +142,11 @@ function FavoritesPage() {
     const abortController = new AbortController()
 
     async function fetchFavorites() {
+      const hasExistingFavorites = cachedFavorites.length > 0
+
       setLoading(true)
       setError('')
       setRemoveError('')
-      setFavorites([])
-      setSelectedProductIds([])
       setCompareMessage('')
 
       try {
@@ -153,7 +154,9 @@ function FavoritesPage() {
         setFavorites(favoritesData)
       } catch (requestError) {
         if (requestError.name !== 'AbortError') {
-          setError(requestError.message || '获取候选池商品失败')
+          if (!hasExistingFavorites) {
+            setError(requestError.message || '获取候选池商品失败')
+          }
         }
       } finally {
         if (!abortController.signal.aborted) {
@@ -167,7 +170,7 @@ function FavoritesPage() {
     return () => {
       abortController.abort()
     }
-  }, [])
+  }, [cachedFavorites.length])
 
   async function handleRemoveFavorite(product) {
     if (!product?.id || removingProductId !== null) {
@@ -218,7 +221,11 @@ function FavoritesPage() {
 
   return (
     <section className="page favorites-page">
-      {loading ? <LoadingState>候选池加载中...</LoadingState> : null}
+      {loading && !hasFavorites ? <LoadingState>候选池加载中...</LoadingState> : null}
+
+      {loading && hasFavorites ? (
+        <p className="page-note page-note--info">正在同步最新候选池数据，当前列表可继续查看。</p>
+      ) : null}
 
       {!loading && error ? <ErrorState>{error}</ErrorState> : null}
 
@@ -230,7 +237,7 @@ function FavoritesPage() {
         <EmptyState>候选池暂无商品，可先从商品列表选择高潜力款加入跟进。</EmptyState>
       ) : null}
 
-      {!loading && !error && hasFavorites ? (
+      {!error && hasFavorites ? (
         <>
           <p className="page-note page-note--info">
             当前候选池共有 <strong>{favorites.length}</strong> 件商品，点击商品内容可进入详情页，可选择 2-4 件进行横向对比。

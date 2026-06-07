@@ -2,6 +2,11 @@ const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:
 const API_BASE_URL = normalizeBaseUrl(RAW_API_BASE_URL)
 const BACKEND_CONNECTION_ERROR = `无法连接到后端服务，请确认 ${API_BASE_URL} 已启动或配置正确`
 const CLIENT_ID_STORAGE_KEY = 'phone_holder_analyzer_client_id'
+const PRODUCTS_CACHE_STORAGE_KEY = 'phone_holder_analyzer_products_cache_v1'
+const DASHBOARD_CACHE_STORAGE_KEY = 'phone_holder_analyzer_dashboard_cache_v1'
+const PRODUCT_DETAIL_CACHE_STORAGE_PREFIX = 'phone_holder_analyzer_product_detail_cache_v1'
+const FAVORITES_CACHE_STORAGE_PREFIX = 'phone_holder_analyzer_favorites_cache_v1'
+const DATA_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000
 const MAX_AI_REQUEST_MESSAGES = 6
 const MAX_AI_REQUEST_ASSISTANT_CONTENT_LENGTH = 700
 const AI_CHAT_REQUEST_TIMEOUT_MS = 45000
@@ -51,6 +56,145 @@ function getClientId() {
   window.localStorage.setItem(CLIENT_ID_STORAGE_KEY, nextClientId)
 
   return nextClientId
+}
+
+function canUseLocalStorage() {
+  return typeof window !== 'undefined' && Boolean(window.localStorage)
+}
+
+function hasProductFilters(filters = {}) {
+  const { keyword = '', category = '', minProfitRate = '', sort = '' } = filters || {}
+
+  return Boolean(
+    String(keyword || '').trim() ||
+      String(category || '').trim() ||
+      String(minProfitRate || '').trim() ||
+      String(sort || '').trim(),
+  )
+}
+
+function writeProductsCache(products) {
+  writeDataCache(PRODUCTS_CACHE_STORAGE_KEY, products)
+}
+
+function writeDataCache(cacheKey, data) {
+  if (!canUseLocalStorage()) {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      cacheKey,
+      JSON.stringify({
+        cachedAt: Date.now(),
+        data,
+      }),
+    )
+  } catch {
+    // Cache write failure should not block the page.
+  }
+}
+
+function readDataCache(cacheKey) {
+  if (!canUseLocalStorage()) {
+    return null
+  }
+
+  try {
+    const rawCache = window.localStorage.getItem(cacheKey)
+
+    if (!rawCache) {
+      return null
+    }
+
+    const parsedCache = JSON.parse(rawCache)
+    const cachedAt = Number(parsedCache?.cachedAt)
+    const data = parsedCache?.data
+
+    if (!Number.isFinite(cachedAt)) {
+      return null
+    }
+
+    if (Date.now() - cachedAt > DATA_CACHE_MAX_AGE_MS) {
+      return null
+    }
+
+    return data
+  } catch {
+    return null
+  }
+}
+
+function getProductDetailCacheKey(id) {
+  return `${PRODUCT_DETAIL_CACHE_STORAGE_PREFIX}_${id}`
+}
+
+function getFavoritesCacheKey() {
+  return `${FAVORITES_CACHE_STORAGE_PREFIX}_${getClientId()}`
+}
+
+function writeFavoritesCache(favorites) {
+  if (Array.isArray(favorites)) {
+    writeDataCache(getFavoritesCacheKey(), favorites)
+  }
+}
+
+function updateFavoritesCache(updater) {
+  const currentFavorites = getCachedFavorites()
+  const nextFavorites = updater(currentFavorites)
+
+  if (Array.isArray(nextFavorites)) {
+    writeFavoritesCache(nextFavorites)
+  }
+}
+
+export function getCachedProducts() {
+  const products = readDataCache(PRODUCTS_CACHE_STORAGE_KEY)
+
+  if (!Array.isArray(products)) {
+    return []
+  }
+
+  return products
+}
+
+export function getCachedDashboard() {
+  const dashboard = readDataCache(DASHBOARD_CACHE_STORAGE_KEY)
+
+  if (!dashboard || typeof dashboard !== 'object' || Array.isArray(dashboard)) {
+    return null
+  }
+
+  return dashboard
+}
+
+export function getCachedProductById(id) {
+  const normalizedProductId = Number(id)
+
+  if (!Number.isInteger(normalizedProductId) || normalizedProductId <= 0) {
+    return null
+  }
+
+  const product = readDataCache(getProductDetailCacheKey(normalizedProductId))
+
+  if (!product || typeof product !== 'object' || Array.isArray(product)) {
+    return (
+      getCachedProducts().find((cachedProduct) => cachedProduct?.id === normalizedProductId) ||
+      null
+    )
+  }
+
+  return product
+}
+
+export function getCachedFavorites() {
+  const favorites = readDataCache(getFavoritesCacheKey())
+
+  if (!Array.isArray(favorites)) {
+    return []
+  }
+
+  return favorites
 }
 
 function createHeaders(options = {}, extraHeaders = {}) {
@@ -182,6 +326,10 @@ export async function getProducts(filters = {}, options = {}) {
     throw new Error('商品列表数据格式不正确')
   }
 
+  if (!hasProductFilters(filters)) {
+    writeProductsCache(products)
+  }
+
   return products
 }
 
@@ -200,6 +348,8 @@ export async function getProductById(id, options = {}) {
     throw new Error('商品详情数据格式不正确')
   }
 
+  writeDataCache(getProductDetailCacheKey(product.id ?? id), product)
+
   return product
 }
 
@@ -213,6 +363,8 @@ export async function getDashboard(options = {}) {
   if (!dashboard || typeof dashboard !== 'object' || Array.isArray(dashboard)) {
     throw new Error('Dashboard 数据格式不正确')
   }
+
+  writeDataCache(DASHBOARD_CACHE_STORAGE_KEY, dashboard)
 
   return dashboard
 }
@@ -421,6 +573,14 @@ export async function addFavorite(productId, options = {}) {
     throw new Error('添加候选商品返回数据格式不正确')
   }
 
+  if (favoriteResult.product && typeof favoriteResult.product === 'object') {
+    updateFavoritesCache((currentFavorites) => {
+      const exists = currentFavorites.some((favorite) => favorite?.id === favoriteResult.product.id)
+
+      return exists ? currentFavorites : [favoriteResult.product, ...currentFavorites]
+    })
+  }
+
   return favoriteResult
 }
 
@@ -434,6 +594,8 @@ export async function getFavorites(options = {}) {
   if (!Array.isArray(favorites)) {
     throw new Error('候选池商品数据格式不正确')
   }
+
+  writeFavoritesCache(favorites)
 
   return favorites
 }
@@ -455,6 +617,10 @@ export async function removeFavorite(productId, options = {}) {
   if (!removeResult || typeof removeResult !== 'object' || Array.isArray(removeResult)) {
     throw new Error('取消收藏返回数据格式不正确')
   }
+
+  updateFavoritesCache((currentFavorites) =>
+    currentFavorites.filter((favorite) => favorite?.id !== productId),
+  )
 
   return removeResult
 }
