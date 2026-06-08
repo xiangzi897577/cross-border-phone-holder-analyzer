@@ -29,28 +29,28 @@
 
 ## 截图展示
 
-截图最终可直接放在本 README 中。建议截图文件统一放在 `docs/screenshots/`，再按下面位置替换占位说明。
+以下截图展示平台从“查看商品池整体表现、筛选候选商品、分析风险与利润、加入候选池、查看单品报告”到 AI 辅助判断的核心流程。大模型 API 接入是项目亮点之一，因此 README 同时内嵌 AI 深度报告和 AI 选品助手弹窗，更多页面状态通过链接查看。
 
-| 展示内容 | 建议文件名 | 截图重点 |
+### 核心流程截图
+
+| 页面 | 截图 | 说明 |
 | --- | --- | --- |
-| Dashboard 数据看板 | `docs/screenshots/dashboard.png` | 商品池概览、关键指标、图表区域 |
-| 商品列表页 | `docs/screenshots/products-list.png` | 商品卡片、利润率、风险等级、推荐评分 |
-| 商品详情页 | `docs/screenshots/product-detail.png` | 成本拆解、风险标签、推荐理由、AI 报告入口 |
-| 搜索 / 筛选 / 排序效果 | `docs/screenshots/products-filter-sort.png` | 关键词、类目、利润率、排序条件联动 |
-| 候选池页面 | `docs/screenshots/favorites.png` | 已收藏商品、对比信息、进入详情 |
-| AI 选品助手弹窗 | `docs/screenshots/ai-chat-widget.png` | 多轮问答入口和对话窗口 |
-| AI 推荐回答效果 | `docs/screenshots/ai-recommendation.png` | 基于商品池上下文的选品建议 |
-| 风险标签与推荐评分展示 | `docs/screenshots/risk-score.png` | 风险原因、风险等级、推荐评分 |
-| 利润率排行图 | `docs/screenshots/profit-ranking.png` | Recharts 利润排行可视化 |
-| 类目分布图 | `docs/screenshots/category-distribution.png` | 商品类目分布与结构观察 |
+| Dashboard 数据看板 | ![Dashboard 数据看板](docs/screenshots/dashboard1.png) | 汇总商品池规模、平均利润率、高潜力商品、风险商品和图表分析，是选品判断的总览入口。 |
+| 商品列表总览 | ![商品列表总览](docs/screenshots/product-list-1.png) | 展示商品卡片、利润率、风险等级、推荐评分和基础市场信号，支持快速发现候选商品。 |
+| 选品分析页面 | ![选品分析页面](docs/screenshots/product-analyse-1.png) | 按高潜力、高风险、低竞争高利润等维度组织商品，帮助从不同策略视角筛选机会。 |
+| 候选池管理 | ![候选池管理](docs/screenshots/favorite.png) | 将重点商品加入候选池后，可继续对比利润、风险、竞争和推荐理由。 |
+| 商品详情页 | ![商品详情页](docs/screenshots/product-detail.png) | 查看单个商品的基础信息、成本拆解、市场指标、风险标签和后续 AI 报告入口。 |
+| AI 深度报告 | ![AI 深度报告](docs/screenshots/ai-report.png) | 基于商品指标和大模型 API 生成综合结论、利润分析、市场需求、竞争风险和下一步建议。 |
+| AI 选品助手弹窗 | ![AI 选品助手弹窗](docs/screenshots/ai-assistant.png) | 围绕商品池上下文进行自然语言问答，辅助解释利润、竞争、物流和风险取舍。 |
 
-<!--
-截图补充后可按以下格式插入：
+### 更多截图
 
-![Dashboard 数据看板](docs/screenshots/dashboard.png)
-![商品列表页](docs/screenshots/products-list.png)
-![AI 选品助手](docs/screenshots/ai-chat-widget.png)
--->
+- Dashboard 图表补充：[dashboard2-chart.png](docs/screenshots/dashboard2-chart.png)
+- 商品列表更多商品卡片：[product-list-2.png](docs/screenshots/product-list-2.png)
+- 商品列表筛选 / 策略 / 排序状态：[product-filter-sort.png](docs/screenshots/product-filter-sort.png)
+- 候选池横向对比表：[favorites-compare.png](docs/screenshots/favorites-compare.png)
+- 高风险与低竞争高利润模块：[product-analyse-2.png](docs/screenshots/product-analyse-2.png)
+- 基础规则选品报告：[basic-report.png](docs/screenshots/basic-report.png)
 
 ## 技术栈
 
