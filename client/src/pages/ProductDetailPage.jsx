@@ -25,7 +25,7 @@ import {
   getRiskFactors,
   getRiskLevelText,
 } from '../utils/product'
-import { buildBasicProductReport, getReportSourceLabel } from '../utils/productReport'
+import { buildBasicProductReport } from '../utils/productReport'
 
 function DecisionMetric({ label, value, tone = '' }) {
   const metricClassName = tone
@@ -64,6 +64,7 @@ function ProductDetailPage() {
   const [reportLoading, setReportLoading] = useState(false)
   const [reportError, setReportError] = useState('')
   const reportAbortControllerRef = useRef(null)
+  const reportSectionRef = useRef(null)
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -129,6 +130,21 @@ function ProductDetailPage() {
     }
   }
 
+  function scrollToReportSection() {
+    const reportSection = reportSectionRef.current
+
+    if (!reportSection) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      reportSection.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+  }
+
   async function handleGenerateAiReport() {
     if (!product?.id || reportLoading) {
       return
@@ -161,12 +177,36 @@ function ProductDetailPage() {
     }
   }
 
+  function handleHeroAiReportClick() {
+    if (aiReport) {
+      scrollToReportSection()
+      return
+    }
+
+    scrollToReportSection()
+    handleGenerateAiReport()
+  }
+
   const productImage = getProductImage(product, imageLoadError)
   const tags = getProductTags(product)
   const riskFactors = getRiskFactors(product)
   const basicReport = useMemo(() => (product ? buildBasicProductReport(product) : ''), [product])
   const reportContent = aiReport || basicReport
-  const reportSource = getReportSourceLabel(aiReport ? 'ai' : 'basic')
+  const reportStatusLabel = reportLoading
+    ? 'AI 分析中'
+    : aiReport
+      ? 'AI 深度报告'
+      : '当前为基础报告'
+  const heroAiReportButtonText = reportLoading
+    ? 'AI 分析中...'
+    : aiReport
+      ? '查看 AI 深度报告'
+      : '生成 AI 深度报告'
+  const reportActionButtonText = reportLoading
+    ? 'AI 正在分析当前商品...'
+    : aiReport
+      ? '重新生成 AI 深度报告'
+      : '升级为 AI 深度报告'
 
   return (
     <section className="page detail-page">
@@ -256,6 +296,23 @@ function ProductDetailPage() {
                     {favoriteMessage}
                   </p>
                 ) : null}
+              </div>
+
+              <div className="detail-page__ai-report-callout">
+                <div className="detail-page__ai-report-copy">
+                  <span className="detail-page__ai-report-label">AI 深度报告</span>
+                  <p className="detail-page__ai-report-text">
+                    基于利润、销量、竞争和风险生成更完整的选品建议。
+                  </p>
+                </div>
+                <button
+                  className="detail-page__ai-report-button"
+                  type="button"
+                  disabled={reportLoading}
+                  onClick={handleHeroAiReportClick}
+                >
+                  {heroAiReportButtonText}
+                </button>
               </div>
 
               <div className="detail-page__tag-list">
@@ -354,15 +411,18 @@ function ProductDetailPage() {
               </p>
             </section>
 
-            <section className="detail-page__section product-report">
+            <section className="detail-page__section product-report" ref={reportSectionRef}>
               <div className="product-report__header">
                 <div>
                   <p className="product-report__eyebrow">Product Report</p>
                   <h3 className="detail-page__section-title product-report__title">
-                    AI 选品分析报告
+                    AI 深度选品报告
                   </h3>
+                  <p className="product-report__description">
+                    默认展示基础规则报告，点击后生成 AI 深度分析。
+                  </p>
                 </div>
-                <span className="product-report__source">{reportSource}</span>
+                <span className="product-report__source">{reportStatusLabel}</span>
               </div>
 
               <div className="product-report__actions">
@@ -370,9 +430,9 @@ function ProductDetailPage() {
                   className="detail-page__favorite-button"
                   type="button"
                   disabled={reportLoading}
-                  onClick={handleGenerateAiReport}
+                  onClick={() => handleGenerateAiReport()}
                 >
-                  {reportLoading ? 'AI 正在分析当前商品...' : '生成 AI 深度报告'}
+                  {reportActionButtonText}
                 </button>
                 {reportError ? <p className="product-report__error">{reportError}</p> : null}
               </div>
